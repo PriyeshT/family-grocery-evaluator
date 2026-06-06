@@ -1,14 +1,14 @@
 import type { ShoppingListItem } from '@/types'
 
 export const DEFAULT_SHOPPING_LIST: ShoppingListItem[] = [
-  { term: 'milk', preferredBrand: 'Meiji' },
+  { term: 'milk', preferredBrand: 'Greenfields' },
   { term: 'eggs' },
-  { term: 'chicken', preferredBrand: 'Sadia' },
+  { term: 'chicken', preferredBrand: 'Seara' },
   { term: 'yoghurt' },
   { term: 'bread' },
   { term: 'butter' },
   { term: 'rice' },
-  { term: 'cooking oil' },
+  { term: 'cooking oil', preferredBrand: 'Naturel' },
   { term: 'onions' },
   { term: 'pasta' },
 ]
