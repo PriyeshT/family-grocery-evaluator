@@ -1,4 +1,4 @@
-import type { FairPricePromotion, MatchedPromotion, PromotionsMatchResult } from '@/types'
+import type { FairPricePromotion, MatchedPromotion, PromotionsMatchResult, ShoppingListItem } from '@/types'
 import { config } from '@/lib/config'
 
 function tokenise(text: string): string[] {
@@ -18,13 +18,13 @@ function fuzzyScore(term: string, name: string): number {
 }
 
 export function matchPromotionsToList(
-  shoppingList: string[],
+  shoppingList: ShoppingListItem[],
   promotions: FairPricePromotion[],
 ): Omit<PromotionsMatchResult, 'scrapedAt' | 'usedFallback'> {
   const matched: MatchedPromotion[] = []
   const unmatched: string[] = []
 
-  for (const term of shoppingList) {
+  for (const { term } of shoppingList) {
     const exactMatches = promotions.filter((p) => exactMatch(term, p.name))
     if (exactMatches.length > 0) {
       const best = exactMatches.reduce((a, b) => ((b.savingPct ?? 0) > (a.savingPct ?? 0) ? b : a))

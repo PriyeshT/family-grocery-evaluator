@@ -33,7 +33,7 @@ export interface ScrapeSummary {
 }
 
 export interface MatchingStep {
-  shopping_list: string[]
+  shopping_list: import('@/types').ShoppingListItem[]
   matched: MatchedItem[]
   unmatched: string[]
   match_methods_used: Array<'exact' | 'fuzzy' | 'none'>
@@ -44,6 +44,8 @@ export interface MatchedItem {
   matched_deal: RawDeal
   match_method: 'exact' | 'fuzzy' | 'none'
   confidence: number
+  preferredBrand?: string
+  brandMatched?: boolean
 }
 
 export interface ComparisonStep {
