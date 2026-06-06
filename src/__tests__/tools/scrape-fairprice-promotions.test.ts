@@ -8,7 +8,6 @@ function productHtml(opts: {
   originalPrice?: string
   promoLabel?: string
   href?: string
-  category?: string
   validUntil?: string
 }) {
   const img = `<img ${opts.alt ? `alt="${opts.alt}"` : ''} ${opts.src ? `src="${opts.src}"` : ''} />`
@@ -19,18 +18,19 @@ function productHtml(opts: {
   const promo = opts.promoLabel
     ? `<div data-testid="promo-label">${opts.promoLabel}</div>`
     : ''
-  const category = opts.category
-    ? `<span data-testid="product-category">${opts.category}</span>`
-    : ''
   const validUntil = opts.validUntil
     ? `<span data-testid="valid-until">${opts.validUntil}</span>`
     : ''
   const inner = `
     <div data-testid="recommended-product-image">${img}</div>
-    ${original}${spans}${promo}${category}${validUntil}
+    ${original}${spans}${promo}${validUntil}
   `
   const product = `<div data-testid="product">${inner}</div>`
   return opts.href ? `<a href="${opts.href}">${product}</a>` : product
+}
+
+function sectionHtml(heading: string, ...products: string[]) {
+  return `<section><h2>${heading}</h2>${products.join('')}</section>`
 }
 
 describe('parseFairPricePromotionsHtml', () => {
@@ -85,14 +85,36 @@ describe('parseFairPricePromotionsHtml', () => {
     expect(parseFairPricePromotionsHtml(html)).toHaveLength(0)
   })
 
-  it('extracts category when present', () => {
-    const html = productHtml({ alt: 'Rice 5kg', prices: ['$11.90'], category: 'Grains & Rice' })
-    expect(parseFairPricePromotionsHtml(html)[0].category).toBe('Grains & Rice')
+  it('assigns section from preceding heading', () => {
+    const html = sectionHtml('Flash Deals', productHtml({ alt: 'Rice 5kg', prices: ['$11.90'] }))
+    expect(parseFairPricePromotionsHtml(html)[0].category).toBe('flash-deals')
   })
 
-  it('sets category to null when absent', () => {
+  it('sets category to null when no section heading precedes the product', () => {
     const html = productHtml({ alt: 'Rice 5kg', prices: ['$11.90'] })
     expect(parseFairPricePromotionsHtml(html)[0].category).toBeNull()
+  })
+
+  it('recognises all four FairPrice section headings', () => {
+    const cases: [string, string][] = [
+      ['Flash Deals', 'flash-deals'],
+      ['Price Slash Zone', 'price-slash'],
+      ['Fresh Picks', 'fresh-picks'],
+      ['Weekly Promotions', 'weekly'],
+    ]
+    for (const [heading, expected] of cases) {
+      const html = sectionHtml(heading, productHtml({ alt: 'Item', prices: ['$1.00'] }))
+      expect(parseFairPricePromotionsHtml(html)[0].category).toBe(expected)
+    }
+  })
+
+  it('updates section when a new heading is encountered', () => {
+    const html =
+      sectionHtml('Flash Deals', productHtml({ alt: 'Milk 1L', prices: ['$2.55'] })) +
+      sectionHtml('Weekly Promotions', productHtml({ alt: 'Bread 400g', prices: ['$2.40'] }))
+    const results = parseFairPricePromotionsHtml(html)
+    expect(results[0].category).toBe('flash-deals')
+    expect(results[1].category).toBe('weekly')
   })
 
   it('extracts validUntil when present', () => {

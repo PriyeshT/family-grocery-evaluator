@@ -1,10 +1,14 @@
 import type { FairPricePromotion } from '@/types'
+import { SECTION_LABELS } from '@/types'
 
 interface PromotionCardProps {
   promotion: FairPricePromotion
+  matchMethod?: 'exact' | 'fuzzy'
+  confidence?: number
+  shoppingListTerm?: string
 }
 
-export function PromotionCard({ promotion }: PromotionCardProps) {
+export function PromotionCard({ promotion, matchMethod, confidence, shoppingListTerm }: PromotionCardProps) {
   const hasSaving = promotion.savingPct !== null && promotion.savingPct > 0
   const href = promotion.url?.startsWith('http') ? promotion.url : `https://www.fairprice.com.sg${promotion.url ?? ''}`
 
@@ -20,6 +24,23 @@ export function PromotionCard({ promotion }: PromotionCardProps) {
           </span>
         )}
       </div>
+
+      {matchMethod && (
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-medium rounded-full px-2 py-0.5 ${
+              matchMethod === 'exact'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}
+          >
+            {matchMethod === 'exact' ? 'Exact match' : `Fuzzy match · ${Math.round((confidence ?? 0) * 100)}%`}
+          </span>
+          {shoppingListTerm && (
+            <span className="text-xs text-gray-400">for &ldquo;{shoppingListTerm}&rdquo;</span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-end justify-between">
         <div>
@@ -43,7 +64,7 @@ export function PromotionCard({ promotion }: PromotionCardProps) {
         <div className="flex items-center gap-2">
           {promotion.category && (
             <span className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5">
-              {promotion.category}
+              {SECTION_LABELS[promotion.category]}
             </span>
           )}
           {promotion.promoLabel && (
