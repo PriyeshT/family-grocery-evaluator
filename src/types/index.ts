@@ -34,6 +34,17 @@ export interface StoreSplitRecommendation {
   reasoning: string
 }
 
+export type FairPriceSection = 'flash-deals' | 'price-slash' | 'fresh-picks' | 'weekly'
+
+export const SECTION_LABELS: Record<FairPriceSection, string> = {
+  'flash-deals': 'Flash Deals',
+  'price-slash': 'Price Slash Zone',
+  'fresh-picks': 'Fresh Picks',
+  'weekly': 'Weekly Promotions',
+}
+
+export const SECTION_ORDER: FairPriceSection[] = ['flash-deals', 'price-slash', 'fresh-picks', 'weekly']
+
 export interface FairPricePromotion {
   name: string
   salePrice: number
@@ -41,7 +52,7 @@ export interface FairPricePromotion {
   savingAmount: number | null
   savingPct: number | null
   promoLabel: string | null
-  category: string | null
+  category: FairPriceSection | null
   imageUrl: string | null
   url: string | null
   validUntil: string | null

@@ -1,7 +1,22 @@
 import * as cheerio from 'cheerio'
-import type { FairPricePromotion, PromotionsResult } from '@/types'
+import type { AnyNode, Element as DomElement } from 'domhandler'
+import type { FairPricePromotion, FairPriceSection, PromotionsResult } from '@/types'
 import { MOCK_FAIRPRICE_PROMOTIONS } from '@/lib/mock-data'
 import { config } from '@/lib/config'
+
+const SECTION_PATTERNS: [RegExp, FairPriceSection][] = [
+  [/flash\s+deals?/i, 'flash-deals'],
+  [/price\s+slash/i, 'price-slash'],
+  [/fresh\s+picks?/i, 'fresh-picks'],
+  [/weekly\s+prom/i, 'weekly'],
+]
+
+function detectSection(text: string): FairPriceSection | null {
+  for (const [pattern, section] of SECTION_PATTERNS) {
+    if (pattern.test(text)) return section
+  }
+  return null
+}
 
 let cache: { result: PromotionsResult; expiresAt: number } | null = null
 
@@ -53,64 +68,84 @@ function fallback(scrapedAt: string, error: string): PromotionsResult {
 export function parseFairPricePromotionsHtml(html: string): FairPricePromotion[] {
   const $ = cheerio.load(html)
   const promotions: FairPricePromotion[] = []
+  const seen = new WeakSet<object>()
+  let currentSection: FairPriceSection | null = null
 
-  $('[data-testid="product"]').each((_, el) => {
-    const img = $(el).find('[data-testid="recommended-product-image"] img').first()
-    const name = img.attr('alt') ?? img.attr('title') ?? ''
-    const imageUrl = img.attr('src') ?? null
-    if (!name) return
+  $('*').each((_, el) => {
+    if (el.type !== 'tag') return
+    const tag = (el as DomElement).tagName.toLowerCase()
 
-    const priceValues = $(el)
-      .find('span')
-      .map((_, s) => $(s).text().trim())
-      .get()
-      .filter((t) => /^\$[\d]+\.\d{2}$/.test(t))
-      .map((t) => parseFloat(t.replace('$', '')))
+    if (['h1', 'h2', 'h3', 'h4'].includes(tag)) {
+      const detected = detectSection($(el).text().trim())
+      if (detected) currentSection = detected
+      return
+    }
 
-    if (priceValues.length === 0) return
-
-    const originalPriceEl = $(el).find('[aria-label="Original price"]').first()
-    const originalPriceText = originalPriceEl.text().replace('$', '').trim()
-    const originalPrice = originalPriceText ? parseFloat(originalPriceText) : null
-    const salePrice = Math.min(...priceValues)
-
-    const promoEl = $(el).find('[data-testid="promo-label"]')
-    const promoLabel = promoEl.length ? promoEl.text().trim() : null
-
-    const linkEl = $(el).closest('a')
-    const relativeUrl = linkEl.length ? (linkEl.attr('href') ?? null) : null
-    const url = relativeUrl
-      ? relativeUrl.startsWith('http')
-        ? relativeUrl
-        : `https://www.fairprice.com.sg${relativeUrl}`
-      : null
-
-    const savingAmount =
-      originalPrice !== null ? parseFloat((originalPrice - salePrice).toFixed(2)) : null
-    const savingPct =
-      originalPrice !== null
-        ? parseFloat(((savingAmount! / originalPrice) * 100).toFixed(1))
-        : null
-
-    const categoryEl = $(el).find('[data-testid="product-category"]').first()
-    const category = categoryEl.length ? categoryEl.text().trim() : null
-
-    const validUntilEl = $(el).find('[data-testid="valid-until"]').first()
-    const validUntil = validUntilEl.length ? validUntilEl.text().trim() : null
-
-    promotions.push({
-      name,
-      salePrice,
-      originalPrice,
-      savingAmount,
-      savingPct,
-      promoLabel,
-      category,
-      imageUrl,
-      url,
-      validUntil,
-    })
+    if ($(el).attr('data-testid') === 'product' && !seen.has(el)) {
+      seen.add(el)
+      const promotion = parseProduct($, el, currentSection)
+      if (promotion) promotions.push(promotion)
+    }
   })
 
   return promotions
+}
+
+function parseProduct(
+  $: cheerio.CheerioAPI,
+  el: AnyNode,
+  section: FairPriceSection | null,
+): FairPricePromotion | null {
+  const img = $(el).find('[data-testid="recommended-product-image"] img').first()
+  const name = img.attr('alt') ?? img.attr('title') ?? ''
+  const imageUrl = img.attr('src') ?? null
+  if (!name) return null
+
+  const priceValues = $(el)
+    .find('span')
+    .map((_, s) => $(s).text().trim())
+    .get()
+    .filter((t) => /^\$[\d]+\.\d{2}$/.test(t))
+    .map((t) => parseFloat(t.replace('$', '')))
+
+  if (priceValues.length === 0) return null
+
+  const originalPriceEl = $(el).find('[aria-label="Original price"]').first()
+  const originalPriceText = originalPriceEl.text().replace('$', '').trim()
+  const originalPrice = originalPriceText ? parseFloat(originalPriceText) : null
+  const salePrice = Math.min(...priceValues)
+
+  const promoEl = $(el).find('[data-testid="promo-label"]')
+  const promoLabel = promoEl.length ? promoEl.text().trim() : null
+
+  const linkEl = $(el).closest('a')
+  const relativeUrl = linkEl.length ? (linkEl.attr('href') ?? null) : null
+  const url = relativeUrl
+    ? relativeUrl.startsWith('http')
+      ? relativeUrl
+      : `https://www.fairprice.com.sg${relativeUrl}`
+    : null
+
+  const savingAmount =
+    originalPrice !== null ? parseFloat((originalPrice - salePrice).toFixed(2)) : null
+  const savingPct =
+    originalPrice !== null
+      ? parseFloat(((savingAmount! / originalPrice) * 100).toFixed(1))
+      : null
+
+  const validUntilEl = $(el).find('[data-testid="valid-until"]').first()
+  const validUntil = validUntilEl.length ? validUntilEl.text().trim() : null
+
+  return {
+    name,
+    salePrice,
+    originalPrice,
+    savingAmount,
+    savingPct,
+    promoLabel,
+    category: section,
+    imageUrl,
+    url,
+    validUntil,
+  }
 }
