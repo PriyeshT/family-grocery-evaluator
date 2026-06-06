@@ -51,22 +51,21 @@ export function parseFairPriceHtml(html: string): RawDeal[] {
     const name = img.attr('alt') ?? img.attr('title') ?? ''
     if (!name) return
 
+    // Collect all spans whose full text is a dollar amount (e.g. "$5.80")
+    const priceValues = $(el)
+      .find('span')
+      .map((_, s) => $(s).text().trim())
+      .get()
+      .filter((t) => /^\$[\d]+\.\d{2}$/.test(t))
+      .map((t) => parseFloat(t.replace('$', '')))
+
+    if (priceValues.length === 0) return
+
+    // Original price has aria-label; sale price is the minimum shown
     const originalPriceEl = $(el).find('[aria-label="Original price"]').first()
     const originalPriceText = originalPriceEl.text().replace('$', '').trim()
     const originalPrice = originalPriceText ? parseFloat(originalPriceText) : null
-
-    // Sale price is the sibling span before the original price span
-    const priceContainer = originalPriceEl.closest('[class]').parent()
-    const salePriceText = priceContainer
-      .find('span')
-      .not('[aria-label]')
-      .first()
-      .text()
-      .replace('$', '')
-      .trim()
-    const salePrice = salePriceText ? parseFloat(salePriceText) : null
-
-    if (!salePrice) return
+    const salePrice = Math.min(...priceValues)
 
     const promoEl = $(el).find('[data-testid="promo-label"]')
     const promoLabel = promoEl.length ? promoEl.text().trim() : null
