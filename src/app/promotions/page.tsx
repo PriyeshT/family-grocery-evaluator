@@ -235,7 +235,42 @@ export default function PromotionsPage() {
           <ErrorState message={error} onRetry={() => void fetchDeals(viewMode)} />
         )}
 
-        {hasContent && (
+        {hasContent && presentSections.length === 0 && (() => {
+          // Live page is JS-rendered — section headings not found; fall back to flat grid
+          const flatAll = allPromotions.filter((p) => !query || p.name.toLowerCase().includes(query))
+          const flatMatched = allMatched.filter((m) => !query || m.promotion.name.toLowerCase().includes(query))
+          const flatCount = viewMode === 'all' ? flatAll.length : flatMatched.length
+          return flatCount === 0 ? (
+            <EmptyState
+              message={
+                viewMode === 'list'
+                  ? 'None of your shopping list items are currently on promotion.'
+                  : 'No promotions match your search.'
+              }
+            />
+          ) : (
+            <div>
+              <p className="text-sm text-gray-500 mb-4">{flatCount} promotion{flatCount !== 1 ? 's' : ''}{searchQuery ? ` matching "${searchQuery}"` : ''}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {viewMode === 'all'
+                  ? flatAll.map((promotion, i) => (
+                      <PromotionCard key={`${promotion.name}-${i}`} promotion={promotion} />
+                    ))
+                  : flatMatched.map((m, i) => (
+                      <PromotionCard
+                        key={`${m.promotion.name}-${i}`}
+                        promotion={m.promotion}
+                        matchMethod={m.matchMethod}
+                        confidence={m.confidence}
+                        shoppingListTerm={m.shoppingListTerm}
+                      />
+                    ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {hasContent && presentSections.length > 0 && (
           <div className="space-y-10">
             {sectionsToRender.map((section) => {
               const items = viewMode === 'all' ? getPromotionsForSection(section) : []
