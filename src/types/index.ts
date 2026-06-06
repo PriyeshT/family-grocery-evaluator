@@ -53,3 +53,17 @@ export interface PromotionsResult {
   usedFallback: boolean
   error?: string
 }
+
+export interface MatchedPromotion {
+  shoppingListTerm: string
+  promotion: FairPricePromotion
+  matchMethod: 'exact' | 'fuzzy'
+  confidence: number
+}
+
+export interface PromotionsMatchResult {
+  matched: MatchedPromotion[]
+  unmatched: string[]
+  scrapedAt: string
+  usedFallback: boolean
+}
