@@ -29,10 +29,6 @@ function productHtml(opts: {
   return opts.href ? `<a href="${opts.href}">${product}</a>` : product
 }
 
-function sectionHtml(heading: string, ...products: string[]) {
-  return `<section><h2>${heading}</h2>${products.join('')}</section>`
-}
-
 describe('parseFairPricePromotionsHtml', () => {
   it('returns empty array for HTML with no products', () => {
     expect(parseFairPricePromotionsHtml('<html><body></body></html>')).toEqual([])
@@ -85,36 +81,27 @@ describe('parseFairPricePromotionsHtml', () => {
     expect(parseFairPricePromotionsHtml(html)).toHaveLength(0)
   })
 
-  it('assigns section from preceding heading', () => {
-    const html = sectionHtml('Flash Deals', productHtml({ alt: 'Rice 5kg', prices: ['$11.90'] }))
-    expect(parseFairPricePromotionsHtml(html)[0].category).toBe('flash-deals')
-  })
-
-  it('sets category to null when no section heading precedes the product', () => {
+  it('sets category to null when no section is passed', () => {
     const html = productHtml({ alt: 'Rice 5kg', prices: ['$11.90'] })
     expect(parseFairPricePromotionsHtml(html)[0].category).toBeNull()
   })
 
-  it('recognises all four FairPrice section headings', () => {
-    const cases: [string, string][] = [
-      ['Flash Deals', 'flash-deals'],
-      ['Price Slash Zone', 'price-slash'],
-      ['Fresh Picks', 'fresh-picks'],
-      ['Weekly Promotions', 'weekly'],
-    ]
-    for (const [heading, expected] of cases) {
-      const html = sectionHtml(heading, productHtml({ alt: 'Item', prices: ['$1.00'] }))
-      expect(parseFairPricePromotionsHtml(html)[0].category).toBe(expected)
-    }
+  it('assigns section passed as second argument to all products', () => {
+    const html =
+      productHtml({ alt: 'Milk 1L', prices: ['$2.55'] }) +
+      productHtml({ alt: 'Bread 400g', prices: ['$2.40'] })
+    const results = parseFairPricePromotionsHtml(html, 'flash-deals')
+    expect(results).toHaveLength(2)
+    expect(results[0].category).toBe('flash-deals')
+    expect(results[1].category).toBe('flash-deals')
   })
 
-  it('updates section when a new heading is encountered', () => {
-    const html =
-      sectionHtml('Flash Deals', productHtml({ alt: 'Milk 1L', prices: ['$2.55'] })) +
-      sectionHtml('Weekly Promotions', productHtml({ alt: 'Bread 400g', prices: ['$2.40'] }))
-    const results = parseFairPricePromotionsHtml(html)
-    expect(results[0].category).toBe('flash-deals')
-    expect(results[1].category).toBe('weekly')
+  it('assigns correct section for all four FairPrice categories', () => {
+    const html = productHtml({ alt: 'Item', prices: ['$1.00'] })
+    const sections = ['flash-deals', 'price-slash', 'fresh-picks', 'weekly'] as const
+    for (const section of sections) {
+      expect(parseFairPricePromotionsHtml(html, section)[0].category).toBe(section)
+    }
   })
 
   it('extracts validUntil when present', () => {
