@@ -80,7 +80,7 @@ export async function runGroceryAgent(
     shopping_list: SHOPPING_LIST,
     matched,
     unmatched,
-    match_methods_used: [...new Set(matched.map((m) => m.match_method))],
+    match_methods_used: [...new Set(matched.map((m) => m.match_method))] as Array<'exact' | 'fuzzy' | 'none'>,
   })
 
   // Step 3: Compare prices
@@ -96,6 +96,7 @@ export async function runGroceryAgent(
     shopping_list_term: m.shopping_list_term,
     deal: m.matched_deal,
     store: m.matched_deal.store,
+    ...(m.preferredBrand !== undefined ? { preferredBrand: m.preferredBrand, brandMatched: m.brandMatched } : {}),
   }))
 
   const estimatedTotal = plannedItems.reduce((sum, p) => sum + p.deal.salePrice, 0)

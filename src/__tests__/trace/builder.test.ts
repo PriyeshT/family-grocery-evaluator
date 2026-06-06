@@ -21,7 +21,7 @@ const mockScrapeStep: ScrapeStep = {
 }
 
 const mockMatchingStep: MatchingStep = {
-  shopping_list: ['milk', 'eggs'],
+  shopping_list: [{ term: 'milk' }, { term: 'eggs' }],
   matched: [],
   unmatched: ['eggs'],
   match_methods_used: ['exact'],

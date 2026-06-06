@@ -1,4 +1,4 @@
-import type { RawDeal } from '@/types'
+import type { RawDeal, ShoppingListItem } from '@/types'
 import type { MatchedItem } from '@/trace/types'
 import { config } from '@/lib/config'
 
@@ -18,38 +18,65 @@ function fuzzyScore(term: string, dealName: string): number {
   return matched.length / termTokens.length
 }
 
+function brandMatch(brand: string, dealName: string): boolean {
+  return dealName.toLowerCase().includes(brand.toLowerCase())
+}
+
+function bestMatch(candidates: RawDeal[], term: string): { deal: RawDeal; method: 'exact' | 'fuzzy'; score: number } | null {
+  const exact = candidates.filter((d) => exactMatch(term, d.name))
+  if (exact.length > 0) {
+    const best = exact.reduce((a, b) => ((b.savingPct ?? 0) > (a.savingPct ?? 0) ? b : a))
+    return { deal: best, method: 'exact', score: 1 }
+  }
+
+  const scored = candidates
+    .map((d) => ({ deal: d, score: fuzzyScore(term, d.name) }))
+    .filter((x) => x.score >= config.fuzzyMatchThreshold)
+    .sort((a, b) => b.score - a.score)
+
+  if (scored.length > 0) {
+    return { deal: scored[0].deal, method: 'fuzzy', score: scored[0].score }
+  }
+
+  return null
+}
+
 const STORES = ['fairprice', 'coldstorage'] as const
 
-export function matchItemsToDeals(shoppingList: string[], deals: RawDeal[]): MatchedItem[] {
-  return shoppingList.flatMap((term): MatchedItem[] => {
+export function matchItemsToDeals(shoppingList: ShoppingListItem[], deals: RawDeal[]): MatchedItem[] {
+  return shoppingList.flatMap((item): MatchedItem[] => {
+    const { term, preferredBrand } = item
     const results: MatchedItem[] = []
 
     for (const store of STORES) {
       const storeDeals = deals.filter((d) => d.store === store)
 
-      // Try exact match first
-      const exactMatches = storeDeals.filter((d) => exactMatch(term, d.name))
-      if (exactMatches.length > 0) {
-        const best = exactMatches.reduce((a, b) =>
-          (b.savingPct ?? 0) > (a.savingPct ?? 0) ? b : a
-        )
-        results.push({ shopping_list_term: term, matched_deal: best, match_method: 'exact', confidence: 1 })
-        continue
+      // When a preferred brand is set, try brand-constrained candidates first.
+      if (preferredBrand) {
+        const brandDeals = storeDeals.filter((d) => brandMatch(preferredBrand, d.name))
+        const brandResult = bestMatch(brandDeals, term)
+        if (brandResult) {
+          results.push({
+            shopping_list_term: term,
+            matched_deal: brandResult.deal,
+            match_method: brandResult.method,
+            confidence: brandResult.score,
+            preferredBrand,
+            brandMatched: true,
+          })
+          continue
+        }
       }
 
-      // Try fuzzy match
-      const scored = storeDeals
-        .map((d) => ({ deal: d, score: fuzzyScore(term, d.name) }))
-        .filter((x) => x.score >= config.fuzzyMatchThreshold)
-        .sort((a, b) => b.score - a.score)
-
-      if (scored.length > 0) {
-        const best = scored[0]
+      // Fall back to any matching deal (soft fallback when brand not found on promotion).
+      const fallbackResult = bestMatch(storeDeals, term)
+      if (fallbackResult) {
         results.push({
           shopping_list_term: term,
-          matched_deal: best.deal,
-          match_method: 'fuzzy',
-          confidence: best.score,
+          matched_deal: fallbackResult.deal,
+          match_method: fallbackResult.method,
+          confidence: fallbackResult.score,
+          ...(preferredBrand ? { preferredBrand, brandMatched: false } : {}),
         })
       }
     }
@@ -58,7 +85,7 @@ export function matchItemsToDeals(shoppingList: string[], deals: RawDeal[]): Mat
   })
 }
 
-export function getUnmatched(shoppingList: string[], matched: MatchedItem[]): string[] {
+export function getUnmatched(shoppingList: ShoppingListItem[], matched: MatchedItem[]): string[] {
   const matchedTerms = new Set(matched.map((m) => m.shopping_list_term))
-  return shoppingList.filter((t) => !matchedTerms.has(t))
+  return shoppingList.filter((i) => !matchedTerms.has(i.term)).map((i) => i.term)
 }

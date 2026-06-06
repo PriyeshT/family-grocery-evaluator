@@ -16,17 +16,33 @@ const STORE_COLORS: Record<string, string> = {
 }
 
 export function DealCard({ item }: DealCardProps) {
-  const { deal, shopping_list_term } = item
+  const { deal, shopping_list_term, preferredBrand, brandMatched } = item
   const hasSaving = deal.savingPct !== null && deal.savingPct > 0
   const isFairPricePromo = deal.store === 'fairprice' && hasSaving
+  const showBrandBadge = preferredBrand !== undefined
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-0.5">
-            {shopping_list_term}
-          </p>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+              {shopping_list_term}
+            </p>
+            {showBrandBadge && brandMatched && (
+              <span className="text-xs font-semibold text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-1.5 py-0">
+                {preferredBrand} ✓
+              </span>
+            )}
+            {showBrandBadge && !brandMatched && (
+              <span
+                className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0"
+                title={`${preferredBrand} not on sale — showing best available`}
+              >
+                {preferredBrand} not on sale
+              </span>
+            )}
+          </div>
           <p className="text-sm font-medium text-gray-900 truncate" title={deal.name}>
             {deal.name}
           </p>

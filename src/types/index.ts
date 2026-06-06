@@ -1,3 +1,8 @@
+export interface ShoppingListItem {
+  term: string
+  preferredBrand?: string
+}
+
 export interface RawDeal {
   name: string
   store: 'fairprice' | 'coldstorage'
@@ -23,6 +28,8 @@ export interface PlannedItem {
   shopping_list_term: string
   deal: RawDeal
   store: 'fairprice' | 'coldstorage'
+  preferredBrand?: string
+  brandMatched?: boolean
 }
 
 export interface StoreSplitRecommendation {

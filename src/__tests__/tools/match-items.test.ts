@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { matchItemsToDeals, getUnmatched } from '@/tools/match-items'
-import type { RawDeal } from '@/types'
+import type { RawDeal, ShoppingListItem } from '@/types'
 
 const makeDeal = (name: string, store: 'fairprice' | 'coldstorage' = 'fairprice'): RawDeal => ({
   name,
@@ -16,60 +16,63 @@ const makeDeal = (name: string, store: 'fairprice' | 'coldstorage' = 'fairprice'
 // One FairPrice deal and one Cold Storage deal for each item
 const deals: RawDeal[] = [
   makeDeal('Marigold Full Cream Milk 1L', 'fairprice'),
+  makeDeal('Meiji Fresh Milk 1L', 'fairprice'),
   makeDeal('Greenfields Fresh Milk 1L', 'coldstorage'),
   makeDeal('Farmhouse Fresh Eggs 10s', 'fairprice'),
   makeDeal('Happy Eggs Free Range 10pc', 'coldstorage'),
   makeDeal('Seara Frozen Chicken Breast', 'fairprice'),
+  makeDeal('Sadia Chicken Wings 1kg', 'fairprice'),
   makeDeal('Tyson Fresh Chicken Fillet', 'coldstorage'),
   makeDeal('Gardenia Original Classic Bread', 'fairprice'),
   makeDeal('Fortune Jasmine Rice 5kg', 'fairprice'),
 ]
 
-describe('matchItemsToDeals', () => {
+const item = (term: string, preferredBrand?: string): ShoppingListItem => ({ term, preferredBrand })
+
+describe('matchItemsToDeals — no brand preference', () => {
   it('returns one match per store when both stores have the item', () => {
-    const result = matchItemsToDeals(['milk'], deals)
-    expect(result).toHaveLength(2)
+    const result = matchItemsToDeals([item('milk')], deals)
     const stores = result.map((r) => r.matched_deal.store)
     expect(stores).toContain('fairprice')
     expect(stores).toContain('coldstorage')
   })
 
   it('returns one match when only one store has the item', () => {
-    const result = matchItemsToDeals(['bread'], deals)
+    const result = matchItemsToDeals([item('bread')], deals)
     expect(result).toHaveLength(1)
     expect(result[0].matched_deal.store).toBe('fairprice')
   })
 
   it('exact match — term is substring of deal name', () => {
-    const result = matchItemsToDeals(['milk'], deals)
+    const result = matchItemsToDeals([item('milk')], deals)
     expect(result.every((r) => r.match_method === 'exact')).toBe(true)
     expect(result.every((r) => r.confidence === 1)).toBe(true)
   })
 
   it('exact match — case insensitive', () => {
-    const result = matchItemsToDeals(['EGGS'], deals)
+    const result = matchItemsToDeals([item('EGGS')], deals)
     expect(result.length).toBeGreaterThan(0)
     expect(result.every((r) => r.match_method === 'exact')).toBe(true)
   })
 
   it('fuzzy match — partial token overlap', () => {
-    const result = matchItemsToDeals(['chicken breast'], deals)
+    const result = matchItemsToDeals([item('chicken breast')], deals)
     expect(result.length).toBeGreaterThan(0)
     expect(result.some((r) => r.matched_deal.name.toLowerCase().includes('chicken'))).toBe(true)
   })
 
   it('no match — returns empty array for unrecognised item', () => {
-    const result = matchItemsToDeals(['truffles'], deals)
+    const result = matchItemsToDeals([item('truffles')], deals)
     expect(result).toHaveLength(0)
   })
 
   it('fuzzy match — low confidence term returns empty when below threshold', () => {
-    const result = matchItemsToDeals(['xyz_no_match'], deals)
+    const result = matchItemsToDeals([item('xyz_no_match')], deals)
     expect(result).toHaveLength(0)
   })
 
   it('multiple items — returns matches across both stores', () => {
-    const result = matchItemsToDeals(['milk', 'eggs'], deals)
+    const result = matchItemsToDeals([item('milk'), item('eggs')], deals)
     const terms = result.map((r) => r.shopping_list_term)
     expect(terms).toContain('milk')
     expect(terms).toContain('eggs')
@@ -78,21 +81,58 @@ describe('matchItemsToDeals', () => {
   it('picks deal with highest saving % per store when multiple exact matches exist', () => {
     const lowSaving = { ...makeDeal('Fresh Chicken Drumsticks', 'fairprice'), savingPct: 10 }
     const highSaving = { ...makeDeal('Fresh Chicken Wings', 'fairprice'), savingPct: 30 }
-    const result = matchItemsToDeals(['chicken'], [lowSaving, highSaving])
+    const result = matchItemsToDeals([item('chicken')], [lowSaving, highSaving])
     expect(result[0].matched_deal.savingPct).toBe(30)
+  })
+})
+
+describe('matchItemsToDeals — brand preference', () => {
+  it('prefers the branded deal when the preferred brand is on sale', () => {
+    const result = matchItemsToDeals([item('milk', 'Meiji')], deals)
+    const fpResult = result.find((r) => r.matched_deal.store === 'fairprice')
+    expect(fpResult?.matched_deal.name).toContain('Meiji')
+    expect(fpResult?.brandMatched).toBe(true)
+    expect(fpResult?.preferredBrand).toBe('Meiji')
+  })
+
+  it('falls back to best available deal when preferred brand is not on sale', () => {
+    const result = matchItemsToDeals([item('milk', 'Oatly')], deals)
+    const fpResult = result.find((r) => r.matched_deal.store === 'fairprice')
+    expect(fpResult).toBeDefined()
+    expect(fpResult?.brandMatched).toBe(false)
+    expect(fpResult?.preferredBrand).toBe('Oatly')
+  })
+
+  it('brand match is case-insensitive', () => {
+    const result = matchItemsToDeals([item('milk', 'meiji')], deals)
+    const fpResult = result.find((r) => r.matched_deal.store === 'fairprice')
+    expect(fpResult?.brandMatched).toBe(true)
+  })
+
+  it('items with no brand preference have no brand fields', () => {
+    const result = matchItemsToDeals([item('eggs')], deals)
+    expect(result.every((r) => r.preferredBrand === undefined)).toBe(true)
+    expect(result.every((r) => r.brandMatched === undefined)).toBe(true)
+  })
+
+  it('prefers Sadia chicken when Sadia is on sale', () => {
+    const result = matchItemsToDeals([item('chicken', 'Sadia')], deals)
+    const fpResult = result.find((r) => r.matched_deal.store === 'fairprice')
+    expect(fpResult?.matched_deal.name).toContain('Sadia')
+    expect(fpResult?.brandMatched).toBe(true)
   })
 })
 
 describe('getUnmatched', () => {
   it('returns items with no match', () => {
-    const matched = matchItemsToDeals(['milk', 'truffles'], deals)
-    const unmatched = getUnmatched(['milk', 'truffles'], matched)
+    const matched = matchItemsToDeals([item('milk'), item('truffles')], deals)
+    const unmatched = getUnmatched([item('milk'), item('truffles')], matched)
     expect(unmatched).toEqual(['truffles'])
   })
 
   it('returns empty array when all items matched', () => {
-    const matched = matchItemsToDeals(['milk', 'eggs'], deals)
-    const unmatched = getUnmatched(['milk', 'eggs'], matched)
+    const matched = matchItemsToDeals([item('milk'), item('eggs')], deals)
+    const unmatched = getUnmatched([item('milk'), item('eggs')], matched)
     expect(unmatched).toHaveLength(0)
   })
 })
