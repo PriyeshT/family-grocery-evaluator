@@ -43,15 +43,30 @@ describe('calculateStoreSplit', () => {
     expect(result.estimated_total_savings).toBe(1.3)
   })
 
-  it('recommends split when savings meet threshold', () => {
+  it('recommends split when savings meet threshold and items split across stores', () => {
+    const items: ComparedItem[] = [
+      compared('milk', 2.0, 3.5, 'fairprice', 1.5),
+      compared('chicken', 11.0, 8.0, 'coldstorage', 3.0),
+    ]
+    // total = 4.5 >= 2.0, FP wins milk, CS wins chicken → genuine split
+    const result = calculateStoreSplit(items, config)
+    expect(result.recommendation).toBe('split')
+    expect(result.split_store).not.toBeNull()
+    expect(result.estimated_total_savings).toBe(4.5)
+    expect(result.reasoning).toContain('milk')
+    expect(result.reasoning).toContain('chicken')
+  })
+
+  it('recommends single store when savings exceed threshold but one store wins all items', () => {
     const items: ComparedItem[] = [
       compared('milk', 2.0, 3.5, 'fairprice', 1.5),
       compared('chicken', 8.0, 11.0, 'fairprice', 3.0),
     ]
-    // total = 4.5 >= 2.0 → split
+    // total = 4.5 >= 2.0 but FP wins everything — no point splitting
     const result = calculateStoreSplit(items, config)
-    expect(result.recommendation).toBe('split')
-    expect(result.split_store).not.toBeNull()
+    expect(result.recommendation).toBe('single_store')
+    expect(result.primary_store).toBe('fairprice')
+    expect(result.split_store).toBeNull()
     expect(result.estimated_total_savings).toBe(4.5)
   })
 
@@ -77,11 +92,12 @@ describe('calculateStoreSplit', () => {
     expect(result.reasoning.length).toBeGreaterThan(10)
   })
 
-  it('threshold edge case — exactly at threshold recommends split', () => {
+  it('threshold edge case — exactly at threshold with items split across stores recommends split', () => {
     const items: ComparedItem[] = [
       compared('milk', 2.0, 4.0, 'fairprice', 2.0),
+      compared('eggs', 5.0, 3.0, 'coldstorage', 2.0),
     ]
-    // exactly 2.0 == threshold 2.0 → split
+    // total = 4.0 >= 2.0, FP wins milk, CS wins eggs → split
     const result = calculateStoreSplit(items, config)
     expect(result.recommendation).toBe('split')
   })

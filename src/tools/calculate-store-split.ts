@@ -32,6 +32,23 @@ export function calculateStoreSplit(
   // Split is worth it — assign each item to its winning store
   const fpItems = bothAvailable.filter((c) => c.winner === 'fairprice').map((c) => c.item_name)
   const csItems = bothAvailable.filter((c) => c.winner === 'coldstorage').map((c) => c.item_name)
+
+  // A split only makes sense if both stores win at least one item
+  if (fpItems.length === 0 || csItems.length === 0) {
+    const primary = fpItems.length === 0 ? 'coldstorage' : 'fairprice'
+    const reason =
+      `${storeLabel(primary)} is cheaper on all ${bothAvailable.length} comparable items — no need to split. ` +
+      `You'd save $${totalSavingsFromSplit.toFixed(2)} vs buying everything at the other store.`
+    return {
+      recommendation: 'single_store',
+      primary_store: primary,
+      split_store: null,
+      estimated_total_savings: parseFloat(totalSavingsFromSplit.toFixed(2)),
+      threshold_applied: cfg.storeSplitSavingsThreshold,
+      reasoning: reason,
+    }
+  }
+
   const primary = fpItems.length >= csItems.length ? 'fairprice' : 'coldstorage'
   const splitStore = primary === 'fairprice' ? 'coldstorage' : 'fairprice'
 
