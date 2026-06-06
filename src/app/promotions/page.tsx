@@ -9,6 +9,14 @@ import { ErrorState } from '@/components/ui/ErrorState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 type ViewMode = 'all' | 'list'
+type ActiveTab = FairPriceSection | 'all-sections'
+
+const SECTION_ICONS: Record<FairPriceSection, string> = {
+  'flash-deals': '⚡',
+  'price-slash': '🔖',
+  'fresh-picks': '🥦',
+  'weekly': '📅',
+}
 
 export default function PromotionsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('all')
@@ -16,7 +24,7 @@ export default function PromotionsPage() {
   const [matchData, setMatchData] = useState<PromotionsMatchResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeCategory, setActiveCategory] = useState<FairPriceSection | 'All'>('All')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('all-sections')
   const [searchQuery, setSearchQuery] = useState('')
 
   const fetchDeals = useCallback(async (mode: ViewMode) => {
@@ -34,7 +42,7 @@ export default function PromotionsPage() {
       } else {
         setData((await res.json()) as PromotionsResult)
       }
-      setActiveCategory('All')
+      setActiveTab('all-sections')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -48,51 +56,54 @@ export default function PromotionsPage() {
 
   const handleModeSwitch = (mode: ViewMode) => {
     setViewMode(mode)
-    setActiveCategory('All')
+    setActiveTab('all-sections')
     setSearchQuery('')
   }
 
-  const basePromotions: FairPricePromotion[] =
+  const allPromotions: FairPricePromotion[] =
     viewMode === 'all'
       ? (data?.promotions ?? [])
       : (matchData?.matched.map((m) => m.promotion) ?? [])
 
-  const presentSections = SECTION_ORDER.filter((s) => basePromotions.some((p) => p.category === s))
+  const allMatched: MatchedPromotion[] = viewMode === 'list' ? (matchData?.matched ?? []) : []
 
   const query = searchQuery.toLowerCase()
 
-  const filteredAll: FairPricePromotion[] =
-    viewMode === 'all'
-      ? basePromotions.filter(
-          (p) =>
-            (activeCategory === 'All' || p.category === activeCategory) &&
-            (!query || p.name.toLowerCase().includes(query)),
-        )
-      : []
+  const getPromotionsForSection = (section: FairPriceSection): FairPricePromotion[] => {
+    let items = allPromotions.filter((p) => p.category === section)
+    if (section === 'price-slash') {
+      items = [...items].sort((a, b) => (b.savingPct ?? 0) - (a.savingPct ?? 0))
+    }
+    if (query) items = items.filter((p) => p.name.toLowerCase().includes(query))
+    return items
+  }
 
-  const filteredMatched: MatchedPromotion[] =
-    viewMode === 'list'
-      ? (matchData?.matched ?? []).filter(
-          (m) =>
-            (activeCategory === 'All' || m.promotion.category === activeCategory) &&
-            (!query || m.promotion.name.toLowerCase().includes(query)),
-        )
-      : []
+  const getMatchedForSection = (section: FairPriceSection): MatchedPromotion[] => {
+    let items = allMatched.filter((m) => m.promotion.category === section)
+    if (section === 'price-slash') {
+      items = [...items].sort((a, b) => (b.promotion.savingPct ?? 0) - (a.promotion.savingPct ?? 0))
+    }
+    if (query) items = items.filter((m) => m.promotion.name.toLowerCase().includes(query))
+    return items
+  }
 
-  const filteredCount = viewMode === 'all' ? filteredAll.length : filteredMatched.length
-  const hasContent = !loading && !error
+  const getListMatchCount = (section: FairPriceSection): number =>
+    allMatched.filter((m) => m.promotion.category === section).length
+
+  const getSectionTotal = (section: FairPriceSection): number =>
+    allPromotions.filter((p) => p.category === section).length
+
+  const presentSections = SECTION_ORDER.filter((s) => getSectionTotal(s) > 0)
 
   const scrapedAt = viewMode === 'all' ? data?.scrapedAt : matchData?.scrapedAt
   const usedFallback = viewMode === 'all' ? data?.usedFallback : matchData?.usedFallback
-
   const lastUpdated = scrapedAt
     ? new Date(scrapedAt).toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short' })
     : null
 
-  const emptyMessage =
-    viewMode === 'list' && basePromotions.length === 0
-      ? 'None of your shopping list items are currently on promotion.'
-      : 'No promotions match your search or filter.'
+  const hasContent = !loading && !error
+
+  const sectionsToRender = activeTab === 'all-sections' ? presentSections : presentSections.filter((s) => s === activeTab)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -121,7 +132,7 @@ export default function PromotionsPage() {
           </div>
         </div>
 
-        {/* Toggle + Search row */}
+        {/* View mode toggle + search */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 w-fit">
             <button
@@ -175,62 +186,122 @@ export default function PromotionsPage() {
           </div>
         </div>
 
-        {/* Category filter pills */}
+        {/* Section tabs */}
         {hasContent && presentSections.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {(['All', ...presentSections] as const).map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  activeCategory === cat
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-                }`}
-              >
-                {cat === 'All' ? 'All' : SECTION_LABELS[cat]}
-                {cat !== 'All' && (
-                  <span className="ml-1.5 text-xs opacity-70">
-                    ({basePromotions.filter((p) => p.category === cat).length})
+          <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-4">
+            <button
+              onClick={() => setActiveTab('all-sections')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'all-sections'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400 hover:text-blue-600'
+              }`}
+            >
+              All sections
+            </button>
+            {presentSections.map((section) => {
+              const total = getSectionTotal(section)
+              const matchCount = viewMode === 'list' ? getListMatchCount(section) : null
+              const isFlash = section === 'flash-deals'
+              const isActive = activeTab === section
+              return (
+                <button
+                  key={section}
+                  onClick={() => setActiveTab(section)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    isActive
+                      ? isFlash
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-blue-600 text-white'
+                      : isFlash
+                        ? 'bg-orange-50 text-orange-700 border border-orange-200 hover:border-orange-400'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                  }`}
+                >
+                  <span>{SECTION_ICONS[section]}</span>
+                  <span>{SECTION_LABELS[section]}</span>
+                  <span className={`text-xs ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                    {matchCount !== null ? `${matchCount}/${total}` : `(${total})`}
                   </span>
-                )}
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
         )}
 
         {/* Content states */}
         {loading && <LoadingSkeleton />}
-
         {!loading && error && (
           <ErrorState message={error} onRetry={() => void fetchDeals(viewMode)} />
         )}
 
-        {hasContent && filteredCount === 0 && <EmptyState message={emptyMessage} />}
+        {hasContent && (
+          <div className="space-y-10">
+            {sectionsToRender.map((section) => {
+              const items = viewMode === 'all' ? getPromotionsForSection(section) : []
+              const matched = viewMode === 'list' ? getMatchedForSection(section) : []
+              const displayCount = viewMode === 'all' ? items.length : matched.length
+              const listCount = viewMode === 'list' ? getListMatchCount(section) : null
+              const sectionTotal = getSectionTotal(section)
+              const isFlash = section === 'flash-deals'
 
-        {hasContent && filteredCount > 0 && (
-          <>
-            <p className="text-sm text-gray-500 mb-4">
-              {filteredCount} promotion{filteredCount !== 1 ? 's' : ''}
-              {activeCategory !== 'All' ? ` in ${SECTION_LABELS[activeCategory as FairPriceSection]}` : ''}
-              {searchQuery ? ` matching "${searchQuery}"` : ''}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {viewMode === 'all'
-                ? filteredAll.map((promotion, i) => (
-                    <PromotionCard key={`${promotion.name}-${i}`} promotion={promotion} />
-                  ))
-                : filteredMatched.map((m, i) => (
-                    <PromotionCard
-                      key={`${m.promotion.name}-${i}`}
-                      promotion={m.promotion}
-                      matchMethod={m.matchMethod}
-                      confidence={m.confidence}
-                      shoppingListTerm={m.shoppingListTerm}
-                    />
-                  ))}
-            </div>
-          </>
+              if (displayCount === 0 && !query) return null
+              if (displayCount === 0 && query) {
+                return (
+                  <SectionGroup
+                    key={section}
+                    section={section}
+                    listCount={listCount}
+                    sectionTotal={sectionTotal}
+                    isFlash={isFlash}
+                  >
+                    <EmptyState message={`No results in ${SECTION_LABELS[section]} for "${searchQuery}"`} />
+                  </SectionGroup>
+                )
+              }
+
+              return (
+                <SectionGroup
+                  key={section}
+                  section={section}
+                  listCount={listCount}
+                  sectionTotal={sectionTotal}
+                  isFlash={isFlash}
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {viewMode === 'all'
+                      ? items.map((promotion, i) => (
+                          <PromotionCard key={`${promotion.name}-${i}`} promotion={promotion} />
+                        ))
+                      : matched.map((m, i) => (
+                          <PromotionCard
+                            key={`${m.promotion.name}-${i}`}
+                            promotion={m.promotion}
+                            matchMethod={m.matchMethod}
+                            confidence={m.confidence}
+                            shoppingListTerm={m.shoppingListTerm}
+                          />
+                        ))}
+                  </div>
+                </SectionGroup>
+              )
+            })}
+
+            {sectionsToRender.length > 0 &&
+              sectionsToRender.every((s) => {
+                const count = viewMode === 'all' ? getPromotionsForSection(s).length : getMatchedForSection(s).length
+                return count === 0
+              }) &&
+              !query && (
+                <EmptyState
+                  message={
+                    viewMode === 'list'
+                      ? 'None of your shopping list items are currently on promotion.'
+                      : 'No promotions available.'
+                  }
+                />
+              )}
+          </div>
         )}
 
         {/* Unmatched list items (list mode only) */}
@@ -244,5 +315,43 @@ export default function PromotionsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+interface SectionGroupProps {
+  section: FairPriceSection
+  listCount: number | null
+  sectionTotal: number
+  isFlash: boolean
+  children: React.ReactNode
+}
+
+function SectionGroup({ section, listCount, sectionTotal, isFlash, children }: SectionGroupProps) {
+  return (
+    <section>
+      <div className={`flex items-center gap-3 mb-4 pb-2 border-b-2 ${isFlash ? 'border-orange-400' : 'border-gray-200'}`}>
+        <span className="text-xl">{SECTION_ICONS[section]}</span>
+        <h2 className={`text-lg font-bold ${isFlash ? 'text-orange-700' : 'text-gray-800'}`}>
+          {SECTION_LABELS[section]}
+        </h2>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isFlash ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+          {sectionTotal}
+        </span>
+        {isFlash && (
+          <span className="text-xs font-bold text-white bg-orange-500 px-2 py-0.5 rounded-full animate-pulse">
+            Ends soon
+          </span>
+        )}
+        {listCount !== null && listCount > 0 && (
+          <span className="ml-auto text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
+            {listCount} of your list item{listCount !== 1 ? 's' : ''} here
+          </span>
+        )}
+        {listCount === 0 && (
+          <span className="ml-auto text-xs text-gray-400">None on your list</span>
+        )}
+      </div>
+      {children}
+    </section>
   )
 }
