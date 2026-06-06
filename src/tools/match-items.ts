@@ -18,37 +18,43 @@ function fuzzyScore(term: string, dealName: string): number {
   return matched.length / termTokens.length
 }
 
+const STORES = ['fairprice', 'coldstorage'] as const
+
 export function matchItemsToDeals(shoppingList: string[], deals: RawDeal[]): MatchedItem[] {
   return shoppingList.flatMap((term): MatchedItem[] => {
-    // Try exact match first
-    const exactMatches = deals.filter((d) => exactMatch(term, d.name))
-    if (exactMatches.length > 0) {
-      // Pick best exact match by highest saving %
-      const best = exactMatches.reduce((a, b) =>
-        (b.savingPct ?? 0) > (a.savingPct ?? 0) ? b : a
-      )
-      return [{ shopping_list_term: term, matched_deal: best, match_method: 'exact', confidence: 1 }]
-    }
+    const results: MatchedItem[] = []
 
-    // Try fuzzy match
-    const scored = deals
-      .map((d) => ({ deal: d, score: fuzzyScore(term, d.name) }))
-      .filter((x) => x.score >= config.fuzzyMatchThreshold)
-      .sort((a, b) => b.score - a.score)
+    for (const store of STORES) {
+      const storeDeals = deals.filter((d) => d.store === store)
 
-    if (scored.length > 0) {
-      const best = scored[0]
-      return [
-        {
+      // Try exact match first
+      const exactMatches = storeDeals.filter((d) => exactMatch(term, d.name))
+      if (exactMatches.length > 0) {
+        const best = exactMatches.reduce((a, b) =>
+          (b.savingPct ?? 0) > (a.savingPct ?? 0) ? b : a
+        )
+        results.push({ shopping_list_term: term, matched_deal: best, match_method: 'exact', confidence: 1 })
+        continue
+      }
+
+      // Try fuzzy match
+      const scored = storeDeals
+        .map((d) => ({ deal: d, score: fuzzyScore(term, d.name) }))
+        .filter((x) => x.score >= config.fuzzyMatchThreshold)
+        .sort((a, b) => b.score - a.score)
+
+      if (scored.length > 0) {
+        const best = scored[0]
+        results.push({
           shopping_list_term: term,
           matched_deal: best.deal,
           match_method: 'fuzzy',
           confidence: best.score,
-        },
-      ]
+        })
+      }
     }
 
-    return []
+    return results
   })
 }
 
