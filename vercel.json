@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "FAIRPRICE_URL": "@fairprice_url",
+    "COLDSTORAGE_URL": "@coldstorage_url"
+  }
+}
