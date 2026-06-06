@@ -76,7 +76,7 @@ export function PromotionCard({ promotion, matchMethod, confidence, shoppingList
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-md transition-colors"
           >
             View →
           </a>
