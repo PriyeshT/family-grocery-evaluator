@@ -33,3 +33,23 @@ export interface StoreSplitRecommendation {
   threshold_applied: number
   reasoning: string
 }
+
+export interface FairPricePromotion {
+  name: string
+  salePrice: number
+  originalPrice: number | null
+  savingAmount: number | null
+  savingPct: number | null
+  promoLabel: string | null
+  category: string | null
+  imageUrl: string | null
+  url: string | null
+  validUntil: string | null
+}
+
+export interface PromotionsResult {
+  promotions: FairPricePromotion[]
+  scrapedAt: string
+  usedFallback: boolean
+  error?: string
+}
