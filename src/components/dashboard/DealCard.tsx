@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { PlannedItem } from '@/types'
 
 interface DealCardProps {
@@ -17,6 +18,7 @@ const STORE_COLORS: Record<string, string> = {
 export function DealCard({ item }: DealCardProps) {
   const { deal, shopping_list_term } = item
   const hasSaving = deal.savingPct !== null && deal.savingPct > 0
+  const isFairPricePromo = deal.store === 'fairprice' && hasSaving
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -52,9 +54,20 @@ export function DealCard({ item }: DealCardProps) {
         </span>
       </div>
 
-      {deal.promoLabel && (
-        <p className="mt-2 text-xs text-emerald-600 font-medium">{deal.promoLabel}</p>
-      )}
+      <div className="mt-2 flex items-center justify-between">
+        {deal.promoLabel && (
+          <p className="text-xs text-emerald-600 font-medium">{deal.promoLabel}</p>
+        )}
+        {isFairPricePromo && (
+          <Link
+            href="/promotions"
+            className="ml-auto flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2.5 py-0.5 hover:bg-orange-100 transition-colors"
+          >
+            <span>On Sale</span>
+            <span aria-hidden>→</span>
+          </Link>
+        )}
+      </div>
     </div>
   )
 }
