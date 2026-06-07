@@ -7,7 +7,7 @@ import { comparePrices } from '@/tools/compare-prices'
 import { calculateStoreSplit } from '@/tools/calculate-store-split'
 import { SHOPPING_LIST } from '@/lib/shopping-list'
 import { config } from '@/lib/config'
-import type { ShoppingPlan, PlannedItem } from '@/types'
+import type { ShoppingPlan, PlannedItem, ShoppingListItem } from '@/types'
 import type { AgentTrace } from '@/trace/types'
 
 const FAIRPRICE_URL = process.env.FAIRPRICE_URL ?? 'https://www.fairprice.com.sg/promotions'
@@ -20,7 +20,8 @@ export interface AgentResult {
 }
 
 export async function runGroceryAgent(
-  triggerType: 'manual' | 'scheduled' | 'api' = 'manual'
+  triggerType: 'manual' | 'scheduled' | 'api' = 'manual',
+  shoppingList: ShoppingListItem[] = SHOPPING_LIST
 ): Promise<AgentResult> {
   const builder = new TraceBuilder(triggerType)
 
@@ -66,8 +67,8 @@ export async function runGroceryAgent(
 
   // Step 2: Match shopping list items to deals
   const allDeals = [...fpResult.deals, ...csResult.deals]
-  const matched = matchItemsToDeals(SHOPPING_LIST, allDeals)
-  const unmatched = getUnmatched(SHOPPING_LIST, matched)
+  const matched = matchItemsToDeals(shoppingList, allDeals)
+  const unmatched = getUnmatched(shoppingList, matched)
 
   const lowConfidence = matched.filter((m) => m.confidence < 0.7 && m.match_method === 'fuzzy')
   if (lowConfidence.length > 0) {
@@ -77,7 +78,7 @@ export async function runGroceryAgent(
   }
 
   builder.recordMatching({
-    shopping_list: SHOPPING_LIST,
+    shopping_list: shoppingList,
     matched,
     unmatched,
     match_methods_used: [...new Set(matched.map((m) => m.match_method))] as Array<'exact' | 'fuzzy' | 'none'>,
