@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import type { ShoppingPlan } from '@/types'
+import type { ShoppingPlan, ShoppingListItem } from '@/types'
 import type { AgentTrace } from '@/trace/types'
+import { loadShoppingList } from '@/lib/shopping-list-storage'
 import { DealCard } from '@/components/dashboard/DealCard'
 import { StoreSplitCard } from '@/components/dashboard/StoreSplitCard'
 import { RefreshButton } from '@/components/dashboard/RefreshButton'
+import { ShoppingListEditor } from '@/components/dashboard/ShoppingListEditor'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -20,16 +22,21 @@ interface RunResult {
 }
 
 export default function DashboardPage() {
+  const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>(() => loadShoppingList())
   const [result, setResult] = useState<RunResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'deals' | 'trace'>('deals')
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (list: ShoppingListItem[]) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/promotions', { method: 'POST' })
+      const res = await fetch('/api/promotions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shoppingList: list }),
+      })
       if (!res.ok) {
         const body = (await res.json()) as { error?: string }
         throw new Error(body.error ?? `HTTP ${res.status}`)
@@ -56,11 +63,13 @@ export default function DashboardPage() {
             <h1 className="text-lg font-bold text-gray-900">SG Grocery Deals</h1>
             <p className="text-xs text-gray-500">FairPrice · Cold Storage</p>
           </div>
-          <RefreshButton onClick={refresh} loading={loading} />
+          <RefreshButton onClick={() => refresh(shoppingList)} loading={loading} />
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <ShoppingListEditor items={shoppingList} onChange={setShoppingList} />
+
         {result?.usingDemoData && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <strong>Demo data</strong> — one or more scrapers used mock data. Results are illustrative.
@@ -68,7 +77,7 @@ export default function DashboardPage() {
         )}
 
         {!result && !loading && !error && (
-          <div className="text-center py-20">
+          <div className="text-center py-12">
             <p className="text-gray-500 mb-4">
               Click <strong>Refresh deals</strong> to run the agent.
             </p>
@@ -77,7 +86,7 @@ export default function DashboardPage() {
 
         {loading && <LoadingSkeleton />}
 
-        {error && <ErrorState message={error} onRetry={refresh} />}
+        {error && <ErrorState message={error} onRetry={() => refresh(shoppingList)} />}
 
         {result && !loading && (
           <>
