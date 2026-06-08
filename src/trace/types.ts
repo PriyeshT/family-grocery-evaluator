@@ -14,13 +14,10 @@ export interface AgentTrace {
 export interface TraceSteps {
   scrape: ScrapeStep | null
   matching: MatchingStep | null
-  comparison: ComparisonStep | null
-  store_split: StoreSplitStep | null
 }
 
 export interface ScrapeStep {
   fairprice: ScrapeSummary
-  coldstorage: ScrapeSummary
 }
 
 export interface ScrapeSummary {
@@ -48,31 +45,8 @@ export interface MatchedItem {
   brandMatched?: boolean
 }
 
-export interface ComparisonStep {
-  items_compared: ComparedItem[]
-  items_single_store: string[]
-}
-
-export interface ComparedItem {
-  item_name: string
-  fairprice_deal: RawDeal | null
-  coldstorage_deal: RawDeal | null
-  winner: 'fairprice' | 'coldstorage' | 'no_deal'
-  saving_amount: number
-  saving_pct: number
-}
-
-export interface StoreSplitStep {
-  recommendation: 'single_store' | 'split'
-  primary_store: 'fairprice' | 'coldstorage'
-  split_store: 'fairprice' | 'coldstorage' | null
-  estimated_total_savings: number
-  threshold_applied: number
-  reasoning: string
-}
-
 export interface TraceError {
-  step: 'scrape' | 'matching' | 'comparison' | 'store_split' | 'agent'
+  step: 'scrape' | 'matching' | 'agent'
   message: string
   details?: string
 }

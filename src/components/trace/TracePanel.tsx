@@ -2,8 +2,6 @@ import type { AgentTrace } from '@/trace/types'
 import { TraceHeader } from './TraceHeader'
 import { TraceScrapeStep } from './TraceScrapeStep'
 import { TraceMatchingStep } from './TraceMatchingStep'
-import { TraceComparisonStep } from './TraceComparisonStep'
-import { TraceStoreSplit } from './TraceStoreSplit'
 import { TraceErrors } from './TraceErrors'
 
 interface TracePanelProps {
@@ -20,8 +18,6 @@ export function TracePanel({ trace }: TracePanelProps) {
         <TraceHeader trace={trace} />
         <TraceScrapeStep step={trace.steps.scrape} />
         <TraceMatchingStep step={trace.steps.matching} />
-        <TraceComparisonStep step={trace.steps.comparison} />
-        <TraceStoreSplit step={trace.steps.store_split} />
         <TraceErrors errors={trace.errors} warnings={trace.warnings} />
       </div>
     </div>

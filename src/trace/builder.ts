@@ -3,13 +3,11 @@ import type {
   AgentTrace,
   ScrapeStep,
   MatchingStep,
-  ComparisonStep,
-  StoreSplitStep,
   TraceError,
 } from './types'
 import type { ShoppingPlan } from '@/types'
 
-type StepName = 'scrape' | 'matching' | 'comparison' | 'store_split'
+type StepName = 'scrape' | 'matching'
 
 export class TraceBuilder {
   private run_id: string
@@ -19,8 +17,6 @@ export class TraceBuilder {
   private steps: {
     scrape: ScrapeStep | null
     matching: MatchingStep | null
-    comparison: ComparisonStep | null
-    store_split: StoreSplitStep | null
   }
   private errors: TraceError[]
   private warnings: string[]
@@ -32,7 +28,7 @@ export class TraceBuilder {
     this.triggered_at = new Date().toISOString()
     this.trigger_type = trigger_type
     this.startedAt = Date.now()
-    this.steps = { scrape: null, matching: null, comparison: null, store_split: null }
+    this.steps = { scrape: null, matching: null }
     this.errors = []
     this.warnings = []
     this.recorded = new Set()
@@ -56,22 +52,6 @@ export class TraceBuilder {
     this.assertNotRecorded('matching')
     this.steps.matching = step
     this.recorded.add('matching')
-    return this
-  }
-
-  recordComparison(step: ComparisonStep): this {
-    this.assertNotFinalised()
-    this.assertNotRecorded('comparison')
-    this.steps.comparison = step
-    this.recorded.add('comparison')
-    return this
-  }
-
-  recordStoreSplit(step: StoreSplitStep): this {
-    this.assertNotFinalised()
-    this.assertNotRecorded('store_split')
-    this.steps.store_split = step
-    this.recorded.add('store_split')
     return this
   }
 

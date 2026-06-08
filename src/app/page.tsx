@@ -6,7 +6,6 @@ import type { ShoppingPlan } from '@/types'
 import type { AgentTrace } from '@/trace/types'
 import { loadShoppingList } from '@/lib/shopping-list-storage'
 import { DealCard } from '@/components/dashboard/DealCard'
-import { StoreSplitCard } from '@/components/dashboard/StoreSplitCard'
 import { RefreshButton } from '@/components/dashboard/RefreshButton'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -61,7 +60,7 @@ export default function DashboardPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-gray-900">SG Grocery Deals</h1>
-            <p className="text-xs text-gray-500">FairPrice · Cold Storage</p>
+            <p className="text-xs text-gray-500">FairPrice</p>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -96,8 +95,6 @@ export default function DashboardPage() {
 
         {result && !loading && (
           <>
-            <StoreSplitCard recommendation={result.plan.store_recommendation} />
-
             <div className="flex gap-1 border-b border-gray-200">
               <TabButton active={activeTab === 'deals'} onClick={() => setActiveTab('deals')}>
                 Deals ({sortedItems.length})
