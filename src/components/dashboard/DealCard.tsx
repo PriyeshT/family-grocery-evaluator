@@ -5,15 +5,8 @@ interface DealCardProps {
   item: PlannedItem
 }
 
-const STORE_LABELS: Record<string, string> = {
-  fairprice: 'FairPrice',
-  coldstorage: 'Cold Storage',
-}
-
-const STORE_COLORS: Record<string, string> = {
-  fairprice: 'bg-blue-50 border-blue-200 text-blue-700',
-  coldstorage: 'bg-green-50 border-green-200 text-green-700',
-}
+const STORE_LABEL = 'FairPrice'
+const STORE_COLOR = 'bg-blue-50 border-blue-200 text-blue-700'
 
 export function DealCard({ item }: DealCardProps) {
   const { deal, shopping_list_term, preferredBrand, brandMatched } = item
@@ -63,10 +56,8 @@ export function DealCard({ item }: DealCardProps) {
             </span>
           )}
         </div>
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STORE_COLORS[deal.store] ?? 'bg-gray-100 border-gray-200 text-gray-600'}`}
-        >
-          {STORE_LABELS[deal.store] ?? deal.store}
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STORE_COLOR}`}>
+          {STORE_LABEL}
         </span>
       </div>
 

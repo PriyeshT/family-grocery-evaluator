@@ -13,13 +13,13 @@ export function TraceScrapeStep({ step }: TraceScrapeStepProps) {
 
   const status = !step
     ? 'missing'
-    : step.fairprice.status === 'failed' || step.coldstorage.status === 'failed'
+    : step.fairprice.status === 'failed'
       ? 'error'
-      : step.fairprice.status === 'fallback_used' || step.coldstorage.status === 'fallback_used'
+      : step.fairprice.status === 'fallback_used'
         ? 'warn'
         : 'ok'
 
-  const total = step ? step.fairprice.items_found + step.coldstorage.items_found : 0
+  const total = step ? step.fairprice.items_found : 0
 
   return (
     <StepCard
@@ -30,21 +30,16 @@ export function TraceScrapeStep({ step }: TraceScrapeStepProps) {
       onToggle={() => setOpen((v) => !v)}
     >
       {step && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          {(['fairprice', 'coldstorage'] as const).map((store) => {
-            const s = step[store]
-            return (
-              <div key={store} className="rounded border border-gray-200 p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium capitalize">{store === 'fairprice' ? 'FairPrice' : 'Cold Storage'}</span>
-                  <StatusBadge status={s.status} />
-                </div>
-                <p className="text-gray-500 text-xs font-mono truncate">{s.url}</p>
-                <p className="text-gray-700 mt-1">{s.items_found} items · {s.duration_ms}ms</p>
-                {s.error && <p className="text-amber-600 text-xs mt-1">{s.error}</p>}
-              </div>
-            )
-          })}
+        <div className="text-sm">
+          <div className="rounded border border-gray-200 p-3">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium">FairPrice</span>
+              <StatusBadge status={step.fairprice.status} />
+            </div>
+            <p className="text-gray-500 text-xs font-mono truncate">{step.fairprice.url}</p>
+            <p className="text-gray-700 mt-1">{step.fairprice.items_found} items · {step.fairprice.duration_ms}ms</p>
+            {step.fairprice.error && <p className="text-amber-600 text-xs mt-1">{step.fairprice.error}</p>}
+          </div>
         </div>
       )}
     </StepCard>

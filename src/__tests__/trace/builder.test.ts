@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { TraceBuilder } from '@/trace/builder'
-import type { ScrapeStep, MatchingStep, ComparisonStep, StoreSplitStep } from '@/trace/types'
+import type { ScrapeStep, MatchingStep } from '@/trace/types'
 
 const mockScrapeStep: ScrapeStep = {
   fairprice: {
@@ -10,14 +10,6 @@ const mockScrapeStep: ScrapeStep = {
     duration_ms: 200,
     raw_deals: [],
   },
-  coldstorage: {
-    url: 'https://example.com/cs',
-    status: 'fallback_used',
-    items_found: 3,
-    duration_ms: 10,
-    raw_deals: [],
-    error: 'mock',
-  },
 }
 
 const mockMatchingStep: MatchingStep = {
@@ -25,20 +17,6 @@ const mockMatchingStep: MatchingStep = {
   matched: [],
   unmatched: ['eggs'],
   match_methods_used: ['exact'],
-}
-
-const mockComparisonStep: ComparisonStep = {
-  items_compared: [],
-  items_single_store: [],
-}
-
-const mockStoreSplitStep: StoreSplitStep = {
-  recommendation: 'single_store',
-  primary_store: 'fairprice',
-  split_store: null,
-  estimated_total_savings: 1.5,
-  threshold_applied: 2.0,
-  reasoning: 'Savings below threshold.',
 }
 
 describe('TraceBuilder', () => {
@@ -65,14 +43,10 @@ describe('TraceBuilder', () => {
     builder
       .recordScrape(mockScrapeStep)
       .recordMatching(mockMatchingStep)
-      .recordComparison(mockComparisonStep)
-      .recordStoreSplit(mockStoreSplitStep)
 
     const trace = builder.finalise()
     expect(trace.steps.scrape).toEqual(mockScrapeStep)
     expect(trace.steps.matching).toEqual(mockMatchingStep)
-    expect(trace.steps.comparison).toEqual(mockComparisonStep)
-    expect(trace.steps.store_split).toEqual(mockStoreSplitStep)
   })
 
   it('throws if scrape is recorded twice', () => {
