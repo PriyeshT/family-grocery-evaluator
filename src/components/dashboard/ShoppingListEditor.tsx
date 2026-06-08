@@ -9,11 +9,25 @@ interface ShoppingListEditorProps {
   onChange: (items: ShoppingListItem[]) => void
 }
 
+function parseBulkInput(input: string): ShoppingListItem[] {
+  return input
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => {
+      const match = token.match(/^(.+?)\s*\(([^)]+)\)\s*$/)
+      if (match) return { term: match[1].trim().toLowerCase(), preferredBrand: match[2].trim() }
+      return { term: token.toLowerCase() }
+    })
+}
+
 export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps) {
   const [newTerm, setNewTerm] = useState('')
   const [newBrand, setNewBrand] = useState('')
   const [editingTerm, setEditingTerm] = useState<string | null>(null)
   const [editBrand, setEditBrand] = useState('')
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkInput, setBulkInput] = useState('')
 
   function persist(next: ShoppingListItem[]) {
     saveShoppingList(next)
@@ -28,6 +42,15 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
     persist([...items, item])
     setNewTerm('')
     setNewBrand('')
+  }
+
+  function addBulkItems() {
+    const parsed = parseBulkInput(bulkInput)
+    const existingTerms = new Set(items.map((i) => i.term))
+    const newItems = parsed.filter((i) => !existingTerms.has(i.term))
+    if (newItems.length > 0) persist([...items, ...newItems])
+    setBulkInput('')
+    setBulkMode(false)
   }
 
   function removeItem(term: string) {
@@ -117,32 +140,70 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
         ))}
       </ul>
 
-      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newTerm}
-            onChange={(e) => setNewTerm(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addItem() }}
-            placeholder="Add item (e.g. tomatoes)"
-            className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-          />
-          <input
-            type="text"
-            value={newBrand}
-            onChange={(e) => setNewBrand(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addItem() }}
-            placeholder="Brand (optional)"
-            className="w-32 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-          />
+      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg space-y-2">
+        {bulkMode ? (
+          <div className="space-y-2">
+            <textarea
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addBulkItems() }}
+              placeholder="milk (Greenfields), eggs, chicken (Seara), yoghurt"
+              rows={3}
+              autoFocus
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent resize-none"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={addBulkItems}
+                disabled={!bulkInput.trim()}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Add all
+              </button>
+              <button
+                onClick={() => { setBulkMode(false); setBulkInput('') }}
+                className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <span className="text-xs text-gray-400 ml-auto">⌘↵ to add</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newTerm}
+              onChange={(e) => setNewTerm(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addItem() }}
+              placeholder="Add item (e.g. tomatoes)"
+              className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+            />
+            <input
+              type="text"
+              value={newBrand}
+              onChange={(e) => setNewBrand(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addItem() }}
+              placeholder="Brand (optional)"
+              className="w-32 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+            />
+            <button
+              onClick={addItem}
+              disabled={!newTerm.trim()}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        )}
+        {!bulkMode && (
           <button
-            onClick={addItem}
-            disabled={!newTerm.trim()}
-            className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setBulkMode(true)}
+            className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
           >
-            Add
+            + Bulk add (comma-separated)
           </button>
-        </div>
+        )}
       </div>
     </div>
   )
