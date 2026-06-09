@@ -6,7 +6,7 @@ import { SHOPPING_LIST } from '@/lib/shopping-list'
 export async function GET() {
   try {
     const { promotions, scrapedAt, usedFallback } = await scrapeFairPricePromotions()
-    const { matched, unmatched } = matchPromotionsToList(SHOPPING_LIST, promotions)
+    const { matched, unmatched } = await matchPromotionsToList(SHOPPING_LIST, promotions)
     return NextResponse.json({ matched, unmatched, scrapedAt, usedFallback })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

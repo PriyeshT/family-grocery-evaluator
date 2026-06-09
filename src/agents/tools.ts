@@ -206,13 +206,13 @@ export async function handleScrapeSection(input: ScrapeToolInput): Promise<{
   }
 }
 
-export function handleMatchItems(input: MatchItemsToolInput): {
+export async function handleMatchItems(input: MatchItemsToolInput): Promise<{
   matched: MatchedPromotion[]
   unmatched: string[]
   matchedCount: number
   unmatchedCount: number
-} {
-  const result = matchPromotionsToList(input.shopping_list, input.promotions)
+}> {
+  const result = await matchPromotionsToList(input.shopping_list, input.promotions)
   return {
     ...result,
     matchedCount: result.matched.length,
