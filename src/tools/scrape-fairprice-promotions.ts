@@ -19,6 +19,66 @@ const FETCH_HEADERS = {
 
 let cache: { result: PromotionsResult; expiresAt: number } | null = null
 
+const sectionCache = new Map<
+  FairPriceSection,
+  { result: { promotions: FairPricePromotion[]; usedFallback: boolean; scrapedAt: string; error?: string }; expiresAt: number }
+>()
+
+export async function scrapeFairPriceSectionOnly(section: FairPriceSection): Promise<{
+  promotions: FairPricePromotion[]
+  usedFallback: boolean
+  scrapedAt: string
+  error?: string
+}> {
+  const cached = sectionCache.get(section)
+  if (cached && Date.now() < cached.expiresAt) return cached.result
+
+  const scrapedAt = new Date().toISOString()
+  const url = SECTION_URLS[section]
+
+  const store = (result: { promotions: FairPricePromotion[]; usedFallback: boolean; scrapedAt: string; error?: string }) => {
+    sectionCache.set(section, { result, expiresAt: Date.now() + config.promotionsCacheTtlMs })
+    return result
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs)
+    const res = await fetch(url, { signal: controller.signal, headers: FETCH_HEADERS })
+    clearTimeout(timeout)
+
+    if (!res.ok) {
+      return store({
+        promotions: MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section),
+        usedFallback: true,
+        scrapedAt,
+        error: `HTTP ${res.status}`,
+      })
+    }
+
+    const html = await res.text()
+    const promotions = parseFairPricePromotionsHtml(html, section)
+
+    if (promotions.length === 0) {
+      return store({
+        promotions: MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section),
+        usedFallback: true,
+        scrapedAt,
+        error: 'No products parsed — page may be JS-rendered',
+      })
+    }
+
+    return store({ promotions, usedFallback: false, scrapedAt })
+  } catch (err) {
+    return store({
+      promotions: MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section),
+      usedFallback: true,
+      scrapedAt,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
 export async function scrapeFairPricePromotions(): Promise<PromotionsResult> {
   if (cache && Date.now() < cache.expiresAt) {
     return cache.result

@@ -1,4 +1,4 @@
-import type { RawDeal, ShoppingPlan } from '@/types'
+import type { RawDeal, ShoppingPlan, FairPriceSection } from '@/types'
 
 export interface AgentTrace {
   run_id: string
@@ -20,6 +20,14 @@ export interface ScrapeStep {
   fairprice: ScrapeSummary
 }
 
+export interface SectionScrapeResult {
+  section: FairPriceSection
+  items_found: number
+  duration_ms: number
+  status: 'success' | 'fallback_used' | 'failed'
+  error?: string
+}
+
 export interface ScrapeSummary {
   url: string
   status: 'success' | 'failed' | 'fallback_used'
@@ -27,6 +35,8 @@ export interface ScrapeSummary {
   duration_ms: number
   raw_deals: RawDeal[]
   error?: string
+  sections_selected?: FairPriceSection[]
+  section_results?: SectionScrapeResult[]
 }
 
 export interface MatchingStep {

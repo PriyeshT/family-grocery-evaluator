@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import { scrapeFairPricePromotions } from '@/tools/scrape-fairprice-promotions'
+import { scrapeFairPriceSectionOnly } from '@/tools/scrape-fairprice-promotions'
 import { matchPromotionsToList } from '@/tools/match-promotions'
 import type {
   FairPriceSection,
@@ -195,14 +195,15 @@ export async function handleScrapeSection(input: ScrapeToolInput): Promise<{
   count: number
   usedFallback: boolean
   scrapedAt: string
+  error?: string
 }> {
-  const result = await scrapeFairPricePromotions()
-  const promotions = result.promotions.filter((p) => p.category === input.section)
+  const result = await scrapeFairPriceSectionOnly(input.section)
   return {
-    promotions,
-    count: promotions.length,
+    promotions: result.promotions,
+    count: result.promotions.length,
     usedFallback: result.usedFallback,
     scrapedAt: result.scrapedAt,
+    ...(result.error ? { error: result.error } : {}),
   }
 }
 
