@@ -65,8 +65,10 @@ export interface PromotionsResult {
 export interface MatchedPromotion {
   shoppingListTerm: string
   promotion: FairPricePromotion
-  matchMethod: 'exact' | 'fuzzy'
+  matchMethod: 'exact' | 'fuzzy' | 'llm'
   confidence: number
+  brandFound?: boolean
+  alternatives?: FairPricePromotion[]
 }
 
 export interface PromotionsMatchResult {

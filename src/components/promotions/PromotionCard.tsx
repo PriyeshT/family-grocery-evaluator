@@ -3,7 +3,7 @@ import { SECTION_LABELS } from '@/types'
 
 interface PromotionCardProps {
   promotion: FairPricePromotion
-  matchMethod?: 'exact' | 'fuzzy'
+  matchMethod?: 'exact' | 'fuzzy' | 'llm'
   confidence?: number
   shoppingListTerm?: string
 }
@@ -31,10 +31,16 @@ export function PromotionCard({ promotion, matchMethod, confidence, shoppingList
             className={`text-xs font-medium rounded-full px-2 py-0.5 ${
               matchMethod === 'exact'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                : matchMethod === 'llm'
+                  ? 'bg-violet-50 text-violet-700 border border-violet-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
             }`}
           >
-            {matchMethod === 'exact' ? 'Exact match' : `Fuzzy match · ${Math.round((confidence ?? 0) * 100)}%`}
+            {matchMethod === 'exact'
+              ? 'Exact match'
+              : matchMethod === 'llm'
+                ? `AI match · ${Math.round((confidence ?? 0) * 100)}%`
+                : `Fuzzy match · ${Math.round((confidence ?? 0) * 100)}%`}
           </span>
           {shoppingListTerm && (
             <span className="text-xs text-gray-400">for &ldquo;{shoppingListTerm}&rdquo;</span>
