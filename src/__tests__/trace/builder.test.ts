@@ -2,6 +2,21 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { TraceBuilder } from '@/trace/builder'
 import type { ScrapeStep, MatchingStep } from '@/trace/types'
 
+const mockLlmStep = {
+  model: 'claude-haiku-4-5-20251001',
+  inputTokens: 100,
+  outputTokens: 50,
+  toolCalled: 'scrape_fairprice_section' as string | null,
+  reasoning: 'I will scrape fresh-picks',
+}
+
+const mockToolCall = {
+  tool: 'scrape_fairprice_section',
+  input: { section: 'fresh-picks' } as Record<string, unknown>,
+  output: { count: 5 },
+  durationMs: 300,
+}
+
 const mockScrapeStep: ScrapeStep = {
   fairprice: {
     url: 'https://example.com/fp',
@@ -84,5 +99,68 @@ describe('TraceBuilder', () => {
     const trace = builder.finalise()
     expect(trace.steps.scrape).toBeNull()
     expect(trace.steps.matching).toBeNull()
+  })
+
+  it('llm_steps defaults to empty array', () => {
+    const trace = builder.finalise()
+    expect(trace.llm_steps).toEqual([])
+  })
+
+  it('tool_calls defaults to empty array', () => {
+    const trace = builder.finalise()
+    expect(trace.tool_calls).toEqual([])
+  })
+
+  it('total_input_tokens and total_output_tokens are 0 with no llm steps', () => {
+    const trace = builder.finalise()
+    expect(trace.total_input_tokens).toBe(0)
+    expect(trace.total_output_tokens).toBe(0)
+  })
+
+  it('recordLlmStep captures step with auto-incremented step_number', () => {
+    builder.recordLlmStep(mockLlmStep)
+    builder.recordLlmStep({ ...mockLlmStep, inputTokens: 200, outputTokens: 30, toolCalled: null, reasoning: null })
+    const trace = builder.finalise()
+    expect(trace.llm_steps).toHaveLength(2)
+    expect(trace.llm_steps[0].step_number).toBe(0)
+    expect(trace.llm_steps[1].step_number).toBe(1)
+    expect(trace.llm_steps[0].tool_called).toBe('scrape_fairprice_section')
+    expect(trace.llm_steps[1].tool_called).toBeNull()
+  })
+
+  it('recordLlmStep maps camelCase params to snake_case fields', () => {
+    builder.recordLlmStep(mockLlmStep)
+    const trace = builder.finalise()
+    const step = trace.llm_steps[0]
+    expect(step.input_tokens).toBe(100)
+    expect(step.output_tokens).toBe(50)
+    expect(step.reasoning).toBe('I will scrape fresh-picks')
+  })
+
+  it('recordToolCall captures tool input, output and duration', () => {
+    builder.recordToolCall(mockToolCall)
+    const trace = builder.finalise()
+    expect(trace.tool_calls).toHaveLength(1)
+    expect(trace.tool_calls[0].tool).toBe('scrape_fairprice_section')
+    expect(trace.tool_calls[0].input).toEqual({ section: 'fresh-picks' })
+    expect(trace.tool_calls[0].duration_ms).toBe(300)
+  })
+
+  it('total tokens are summed across all llm steps', () => {
+    builder.recordLlmStep(mockLlmStep)
+    builder.recordLlmStep({ ...mockLlmStep, inputTokens: 200, outputTokens: 30, toolCalled: null, reasoning: null })
+    const trace = builder.finalise()
+    expect(trace.total_input_tokens).toBe(300)
+    expect(trace.total_output_tokens).toBe(80)
+  })
+
+  it('recordLlmStep throws after finalise', () => {
+    builder.finalise()
+    expect(() => builder.recordLlmStep(mockLlmStep)).toThrow('cannot modify a finalised trace')
+  })
+
+  it('recordToolCall throws after finalise', () => {
+    builder.finalise()
+    expect(() => builder.recordToolCall(mockToolCall)).toThrow('cannot modify a finalised trace')
   })
 })

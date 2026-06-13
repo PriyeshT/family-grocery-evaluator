@@ -136,6 +136,7 @@ export async function runGroceryAgent(
           ...(result.error ? { error: result.error } : {}),
         })
 
+        builder.recordToolCall({ tool: 'scrape_fairprice_section', input: { section }, output: result, durationMs: scrapeDuration })
         return result
       },
     }),
@@ -173,8 +174,12 @@ export async function runGroceryAgent(
           )
           .describe('The promotions to match against, as returned by scrape_fairprice_section'),
       }),
-      execute: async (input) =>
-        handleMatchItems(input as { shopping_list: ShoppingListItem[]; promotions: FairPricePromotion[] }),
+      execute: async (input) => {
+        const matchStart = Date.now()
+        const result = await handleMatchItems(input as { shopping_list: ShoppingListItem[]; promotions: FairPricePromotion[] })
+        builder.recordToolCall({ tool: 'match_items', input: input as Record<string, unknown>, output: result, durationMs: Date.now() - matchStart })
+        return result
+      },
     }),
 
     record_recommendation: tool({
@@ -220,19 +225,32 @@ export async function runGroceryAgent(
           .optional(),
       }),
       execute: async (input) => {
+        const recStart = Date.now()
         finalRecommendation = input as RecordRecommendationToolInput
-        return handleRecordRecommendation(input as RecordRecommendationToolInput)
+        const result = await handleRecordRecommendation(input as RecordRecommendationToolInput)
+        builder.recordToolCall({ tool: 'record_recommendation', input: input as Record<string, unknown>, output: result, durationMs: Date.now() - recStart })
+        return result
       },
     }),
   }
 
-  await generateText({
+  const agentResult = await generateText({
     model: anthropicProvider(AGENT_MODEL),
     system: SYSTEM_PROMPT,
     prompt: `Find the best FairPrice promotions for this shopping list:\n${JSON.stringify(shoppingList, null, 2)}`,
     tools,
     stopWhen: stepCountIs(10),
   })
+
+  for (const step of agentResult.steps) {
+    builder.recordLlmStep({
+      model: AGENT_MODEL,
+      inputTokens: step.usage.inputTokens ?? 0,
+      outputTokens: step.usage.outputTokens ?? 0,
+      toolCalled: step.toolCalls[0]?.toolName ?? null,
+      reasoning: step.text || null,
+    })
+  }
 
   // Build trace scrape step with section-level detail
   const overallStatus: 'success' | 'fallback_used' | 'failed' =

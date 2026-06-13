@@ -88,6 +88,30 @@ const recordArgs = {
 import { runGroceryAgent } from '@/agents/grocery-agent'
 import { traceStore } from '@/trace/store'
 
+const mockSteps = [
+  {
+    text: 'I will scrape fresh-picks first.',
+    toolCalls: [{ toolName: 'scrape_fairprice_section', toolCallId: '1', type: 'tool-call', args: {} }],
+    toolResults: [],
+    usage: { inputTokens: 100, outputTokens: 40 },
+    finishReason: 'tool-calls',
+  },
+  {
+    text: '',
+    toolCalls: [{ toolName: 'match_items', toolCallId: '2', type: 'tool-call', args: {} }],
+    toolResults: [],
+    usage: { inputTokens: 200, outputTokens: 30 },
+    finishReason: 'tool-calls',
+  },
+  {
+    text: '',
+    toolCalls: [{ toolName: 'record_recommendation', toolCallId: '3', type: 'tool-call', args: {} }],
+    toolResults: [],
+    usage: { inputTokens: 300, outputTokens: 20 },
+    finishReason: 'stop',
+  },
+]
+
 // Simulate the agentic loop: generateText calls execute functions in sequence,
 // which is how the real SDK drives the loop — tools run as Claude calls them.
 function makeGenerateTextMock(fallback = false) {
@@ -100,7 +124,7 @@ function makeGenerateTextMock(fallback = false) {
     await tools.record_recommendation.execute(
       fallback ? { ...recordArgs, matched: [{ ...recordArgs.matched[0] }] } : recordArgs
     )
-    return { steps: [], text: '', finishReason: 'stop' }
+    return { steps: mockSteps, text: '', finishReason: 'stop' }
   }
 }
 
@@ -201,5 +225,42 @@ describe('runGroceryAgent', () => {
     await runGroceryAgent('manual', testShoppingList)
     const callArgs = mockGenerateText.mock.calls[0][0]
     expect(callArgs.stopWhen).toBeDefined()
+  })
+
+  it('trace llm_steps is populated from generateText steps', async () => {
+    const { trace } = await runGroceryAgent('manual', testShoppingList)
+    expect(trace.llm_steps).toHaveLength(3)
+    expect(trace.llm_steps[0].step_number).toBe(0)
+    expect(trace.llm_steps[0].tool_called).toBe('scrape_fairprice_section')
+    expect(trace.llm_steps[0].reasoning).toBe('I will scrape fresh-picks first.')
+    expect(trace.llm_steps[1].tool_called).toBe('match_items')
+    expect(trace.llm_steps[2].tool_called).toBe('record_recommendation')
+  })
+
+  it('trace llm_steps captures token counts per step', async () => {
+    const { trace } = await runGroceryAgent('manual', testShoppingList)
+    expect(trace.llm_steps[0].input_tokens).toBe(100)
+    expect(trace.llm_steps[0].output_tokens).toBe(40)
+  })
+
+  it('trace total_input_tokens and total_output_tokens are summed', async () => {
+    const { trace } = await runGroceryAgent('manual', testShoppingList)
+    expect(trace.total_input_tokens).toBe(600)
+    expect(trace.total_output_tokens).toBe(90)
+  })
+
+  it('trace tool_calls records every tool invocation', async () => {
+    const { trace } = await runGroceryAgent('manual', testShoppingList)
+    const toolNames = trace.tool_calls.map((tc) => tc.tool)
+    expect(toolNames).toContain('scrape_fairprice_section')
+    expect(toolNames).toContain('match_items')
+    expect(toolNames).toContain('record_recommendation')
+  })
+
+  it('trace tool_calls includes input and duration_ms', async () => {
+    const { trace } = await runGroceryAgent('manual', testShoppingList)
+    const scrapeCall = trace.tool_calls.find((tc) => tc.tool === 'scrape_fairprice_section')
+    expect(scrapeCall?.input).toEqual({ section: 'fresh-picks' })
+    expect(scrapeCall?.duration_ms).toBeGreaterThanOrEqual(0)
   })
 })
