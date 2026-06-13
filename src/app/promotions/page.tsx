@@ -7,6 +7,7 @@ import { PromotionCard } from '@/components/promotions/PromotionCard'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { loadShoppingList, addItemToList } from '@/lib/shopping-list-storage'
 
 type ViewMode = 'all' | 'list'
 type ActiveTab = FairPriceSection | 'all-sections'
@@ -26,6 +27,25 @@ export default function PromotionsPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('all-sections')
   const [searchQuery, setSearchQuery] = useState('')
+  // Names of promotions already on the list (loaded once on mount)
+  const [listTerms, setListTerms] = useState<Set<string>>(new Set())
+  // Names added during this session
+  const [addedNames, setAddedNames] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const items = loadShoppingList()
+    setListTerms(new Set(items.map((i) => i.term.toLowerCase())))
+  }, [])
+
+  const handleAddToList = useCallback((promotionName: string) => {
+    const added = addItemToList(promotionName)
+    if (added) {
+      setAddedNames((prev) => new Set(prev).add(promotionName))
+      setListTerms((prev) => new Set(prev).add(promotionName.toLowerCase()))
+    }
+  }, [])
+
+  const isOnList = useCallback((name: string) => listTerms.has(name.toLowerCase()), [listTerms])
 
   const fetchDeals = useCallback(async (mode: ViewMode) => {
     setLoading(true)
@@ -104,6 +124,24 @@ export default function PromotionsPage() {
   const hasContent = !loading && !error
 
   const sectionsToRender = activeTab === 'all-sections' ? presentSections : presentSections.filter((s) => s === activeTab)
+
+  const renderCard = (promotion: FairPricePromotion, i: number, matchedMeta?: { matchMethod: 'exact' | 'fuzzy' | 'llm'; confidence: number; shoppingListTerm: string }) => {
+    // In "list" mode, matched items are already on the list by definition
+    const onList = viewMode === 'list' ? true : isOnList(promotion.name)
+    const justAdded = addedNames.has(promotion.name)
+    return (
+      <PromotionCard
+        key={`${promotion.name}-${i}`}
+        promotion={promotion}
+        matchMethod={matchedMeta?.matchMethod}
+        confidence={matchedMeta?.confidence}
+        shoppingListTerm={matchedMeta?.shoppingListTerm}
+        isOnList={onList && !justAdded}
+        wasJustAdded={justAdded}
+        onAddToList={onList || justAdded ? undefined : () => handleAddToList(promotion.name)}
+      />
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -253,18 +291,8 @@ export default function PromotionsPage() {
               <p className="text-sm text-gray-500 mb-4">{flatCount} promotion{flatCount !== 1 ? 's' : ''}{searchQuery ? ` matching "${searchQuery}"` : ''}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {viewMode === 'all'
-                  ? flatAll.map((promotion, i) => (
-                      <PromotionCard key={`${promotion.name}-${i}`} promotion={promotion} />
-                    ))
-                  : flatMatched.map((m, i) => (
-                      <PromotionCard
-                        key={`${m.promotion.name}-${i}`}
-                        promotion={m.promotion}
-                        matchMethod={m.matchMethod}
-                        confidence={m.confidence}
-                        shoppingListTerm={m.shoppingListTerm}
-                      />
-                    ))}
+                  ? flatAll.map((promotion, i) => renderCard(promotion, i))
+                  : flatMatched.map((m, i) => renderCard(m.promotion, i, { matchMethod: m.matchMethod, confidence: m.confidence, shoppingListTerm: m.shoppingListTerm }))}
               </div>
             </div>
           )
@@ -305,18 +333,8 @@ export default function PromotionsPage() {
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {viewMode === 'all'
-                      ? items.map((promotion, i) => (
-                          <PromotionCard key={`${promotion.name}-${i}`} promotion={promotion} />
-                        ))
-                      : matched.map((m, i) => (
-                          <PromotionCard
-                            key={`${m.promotion.name}-${i}`}
-                            promotion={m.promotion}
-                            matchMethod={m.matchMethod}
-                            confidence={m.confidence}
-                            shoppingListTerm={m.shoppingListTerm}
-                          />
-                        ))}
+                      ? items.map((promotion, i) => renderCard(promotion, i))
+                      : matched.map((m, i) => renderCard(m.promotion, i, { matchMethod: m.matchMethod, confidence: m.confidence, shoppingListTerm: m.shoppingListTerm }))}
                   </div>
                 </SectionGroup>
               )
