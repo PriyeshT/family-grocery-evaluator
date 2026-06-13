@@ -85,3 +85,15 @@ export interface PromotionsMatchResult {
   scrapedAt: string
   usedFallback: boolean
 }
+
+export interface OpportunityItem {
+  promotion: FairPricePromotion
+  rationale: string
+  rank: number
+}
+
+export interface OpportunitiesResult {
+  opportunities: OpportunityItem[]
+  scrapedAt: string
+  usedFallback: boolean
+}

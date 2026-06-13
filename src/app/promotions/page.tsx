@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { PromotionsResult, PromotionsMatchResult, MatchedPromotion, FairPricePromotion, FairPriceSection } from '@/types'
+import type { PromotionsResult, PromotionsMatchResult, MatchedPromotion, FairPricePromotion, FairPriceSection, OpportunityItem } from '@/types'
 import { SECTION_LABELS, SECTION_ORDER } from '@/types'
 import { PromotionCard } from '@/components/promotions/PromotionCard'
+import { OpportunitiesSection } from '@/components/promotions/OpportunitiesSection'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -32,6 +33,10 @@ export default function PromotionsPage() {
   const [listTerms, setListTerms] = useState<Set<string>>(new Set())
   // Names added during this session
   const [addedNames, setAddedNames] = useState<Set<string>>(new Set())
+  // Opportunities state
+  const [opportunities, setOpportunities] = useState<OpportunityItem[]>([])
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false)
+  const [opportunitiesError, setOpportunitiesError] = useState<string | null>(null)
 
   useEffect(() => {
     const items = loadShoppingList()
@@ -71,9 +76,36 @@ export default function PromotionsPage() {
     }
   }, [])
 
+  const fetchOpportunities = useCallback(async () => {
+    setOpportunitiesLoading(true)
+    setOpportunitiesError(null)
+    try {
+      const currentList = loadShoppingList()
+      const res = await fetch('/api/fairprice-promotions/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shoppingList: currentList }),
+      })
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string }
+        throw new Error(body.error ?? `HTTP ${res.status}`)
+      }
+      const result = (await res.json()) as { opportunities: OpportunityItem[] }
+      setOpportunities(result.opportunities)
+    } catch (err) {
+      setOpportunitiesError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setOpportunitiesLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void fetchDeals(viewMode)
   }, [fetchDeals, viewMode])
+
+  useEffect(() => {
+    if (viewMode === 'all') void fetchOpportunities()
+  }, [viewMode, fetchOpportunities])
 
   const handleModeSwitch = (mode: ViewMode) => {
     setViewMode(mode)
@@ -389,6 +421,19 @@ export default function PromotionsPage() {
             </p>
             <p className="text-sm text-gray-500">{matchData.unmatched.join(', ')}</p>
           </div>
+        )}
+
+        {/* AI-surfaced opportunities (all mode only) */}
+        {viewMode === 'all' && !loading && (
+          <OpportunitiesSection
+            opportunities={opportunities}
+            loading={opportunitiesLoading}
+            error={opportunitiesError}
+            addedNames={addedNames}
+            listTerms={listTerms}
+            onAddToList={handleAddToList}
+            onRetry={() => void fetchOpportunities()}
+          />
         )}
       </div>
     </div>
