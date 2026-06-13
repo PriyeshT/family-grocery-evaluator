@@ -13,7 +13,7 @@ export function Navigation() {
   const pathname = usePathname()
 
   return (
-    <nav className="sticky top-0 z-20 bg-white border-b border-gray-200">
+    <nav className="sticky top-0 z-20 bg-brand-surface border-b border-brand-border">
       <div className="max-w-5xl mx-auto px-4 flex items-center gap-1">
         {NAV_ITEMS.map(({ label, href }) => {
           const isActive = pathname === href
@@ -23,8 +23,8 @@ export function Navigation() {
               href={href}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 isActive
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                  ? 'border-brand-primary text-brand-primary'
+                  : 'border-transparent text-brand-text-secondary hover:text-brand-primary hover:border-brand-border'
               }`}
             >
               {label}

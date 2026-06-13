@@ -183,14 +183,14 @@ export default function PromotionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-brand-bg">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">FairPrice Promotions</h1>
+            <h1 className="text-2xl font-bold text-brand-primary">FairPrice Promotions</h1>
             {lastUpdated && (
-              <p className="text-sm text-gray-500 mt-0.5">Last updated: {lastUpdated}</p>
+              <p className="text-sm text-brand-text-secondary mt-0.5">Last updated: {lastUpdated}</p>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export default function PromotionsPage() {
             <button
               onClick={() => void fetchDeals(viewMode)}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Refreshing…' : 'Refresh'}
             </button>
@@ -240,7 +240,7 @@ export default function PromotionsPage() {
               placeholder="Search promotions…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-64 pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full sm:w-64 pl-9 pr-8 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent"
             />
             <svg
               className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
@@ -268,8 +268,8 @@ export default function PromotionsPage() {
           const matchedCount = matchData.matched.length
           const totalSavings = matchData.matched.reduce((sum, m) => sum + (m.promotion.savingAmount ?? 0), 0)
           return (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <p className="text-sm text-emerald-800">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 rounded-lg border border-brand-accent/50 bg-brand-accent/20 px-4 py-3">
+              <p className="text-sm text-brand-primary">
                 <span className="font-semibold">{matchedCount} item{matchedCount !== 1 ? 's' : ''} on your list</span>
                 {' '}are on promotion
                 {totalSavings > 0 && (
@@ -278,7 +278,7 @@ export default function PromotionsPage() {
               </p>
               <Link
                 href="/?replan=1"
-                className="flex-shrink-0 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex-shrink-0 px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 Update my plan →
               </Link>
@@ -288,13 +288,13 @@ export default function PromotionsPage() {
 
         {/* Section tabs */}
         {hasContent && presentSections.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-4">
+          <div className="flex flex-wrap gap-2 mb-6 border-b border-brand-border pb-4">
             <button
               onClick={() => setActiveTab('all-sections')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'all-sections'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                  ? 'bg-brand-primary text-white'
+                  : 'bg-brand-surface text-brand-text-secondary border border-brand-border hover:border-brand-secondary hover:text-brand-secondary'
               }`}
             >
               All sections
@@ -311,11 +311,11 @@ export default function PromotionsPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                     isActive
                       ? isFlash
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-brand-tertiary text-white'
+                        : 'bg-brand-primary text-white'
                       : isFlash
-                        ? 'bg-orange-50 text-orange-700 border border-orange-200 hover:border-orange-400'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                        ? 'bg-brand-tertiary/10 text-brand-tertiary border border-brand-tertiary/30 hover:border-brand-tertiary/60'
+                        : 'bg-brand-surface text-brand-text-secondary border border-brand-border hover:border-brand-secondary hover:text-brand-secondary'
                   }`}
                 >
                   <span>{SECTION_ICONS[section]}</span>
@@ -350,7 +350,7 @@ export default function PromotionsPage() {
             />
           ) : (
             <div>
-              <p className="text-sm text-gray-500 mb-4">{flatCount} promotion{flatCount !== 1 ? 's' : ''}{searchQuery ? ` matching "${searchQuery}"` : ''}</p>
+              <p className="text-sm text-brand-text-secondary mb-4">{flatCount} promotion{flatCount !== 1 ? 's' : ''}{searchQuery ? ` matching "${searchQuery}"` : ''}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {viewMode === 'all'
                   ? flatAll.map((promotion, i) => renderCard(promotion, i))
@@ -421,11 +421,11 @@ export default function PromotionsPage() {
 
         {/* Unmatched list items (list mode only) */}
         {hasContent && viewMode === 'list' && matchData && matchData.unmatched.length > 0 && (
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm font-medium text-gray-600 mb-1">
+          <div className="mt-8 p-4 bg-brand-bg rounded-lg border border-brand-border">
+            <p className="text-sm font-medium text-brand-text-secondary mb-1">
               Not on promotion ({matchData.unmatched.length}):
             </p>
-            <p className="text-sm text-gray-500">{matchData.unmatched.join(', ')}</p>
+            <p className="text-sm text-brand-text-secondary">{matchData.unmatched.join(', ')}</p>
           </div>
         )}
 
@@ -457,26 +457,26 @@ interface SectionGroupProps {
 function SectionGroup({ section, listCount, sectionTotal, isFlash, children }: SectionGroupProps) {
   return (
     <section>
-      <div className={`flex items-center gap-3 mb-4 pb-2 border-b-2 ${isFlash ? 'border-orange-400' : 'border-gray-200'}`}>
+      <div className={`flex items-center gap-3 mb-4 pb-2 border-b-2 ${isFlash ? 'border-brand-tertiary' : 'border-brand-border'}`}>
         <span className="text-xl">{SECTION_ICONS[section]}</span>
-        <h2 className={`text-lg font-bold ${isFlash ? 'text-orange-700' : 'text-gray-800'}`}>
+        <h2 className={`text-lg font-bold ${isFlash ? 'text-brand-tertiary' : 'text-brand-primary'}`}>
           {SECTION_LABELS[section]}
         </h2>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isFlash ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isFlash ? 'bg-brand-tertiary/10 text-brand-tertiary' : 'bg-brand-bg text-brand-text-secondary'}`}>
           {sectionTotal}
         </span>
         {isFlash && (
-          <span className="text-xs font-bold text-white bg-orange-500 px-2 py-0.5 rounded-full animate-pulse">
+          <span className="text-xs font-bold text-white bg-brand-tertiary px-2 py-0.5 rounded-full animate-pulse">
             Ends soon
           </span>
         )}
         {listCount !== null && listCount > 0 && (
-          <span className="ml-auto text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
+          <span className="ml-auto text-xs font-medium text-brand-secondary bg-brand-secondary/10 border border-brand-secondary/30 rounded-full px-2.5 py-0.5">
             {listCount} of your list item{listCount !== 1 ? 's' : ''} here
           </span>
         )}
         {listCount === 0 && (
-          <span className="ml-auto text-xs text-gray-400">None on your list</span>
+          <span className="ml-auto text-xs text-brand-text-secondary">None on your list</span>
         )}
       </div>
       {children}
