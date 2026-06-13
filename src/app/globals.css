@@ -10,8 +10,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
 
-  /* Brand palette */
+/* Brand palette in a plain @theme block so Tailwind emits :root CSS variables,
+   which allows opacity-modifier variants (bg-brand-primary/90, etc.) to work
+   via color-mix(). @theme inline suppresses variable generation, breaking them. */
+@theme {
   --color-brand-primary: #0D3B66;
   --color-brand-secondary: #426B69;
   --color-brand-accent: #F4D35E;
