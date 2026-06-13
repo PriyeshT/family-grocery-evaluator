@@ -8,6 +8,7 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { loadShoppingList, addItemToList } from '@/lib/shopping-list-storage'
+import Link from 'next/link'
 
 type ViewMode = 'all' | 'list'
 type ActiveTab = FairPriceSection | 'all-sections'
@@ -223,6 +224,29 @@ export default function PromotionsPage() {
             )}
           </div>
         </div>
+
+        {/* Savings banner — list mode only, when matches exist */}
+        {hasContent && viewMode === 'list' && matchData && matchData.matched.length > 0 && (() => {
+          const matchedCount = matchData.matched.length
+          const totalSavings = matchData.matched.reduce((sum, m) => sum + (m.promotion.savingAmount ?? 0), 0)
+          return (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-sm text-emerald-800">
+                <span className="font-semibold">{matchedCount} item{matchedCount !== 1 ? 's' : ''} on your list</span>
+                {' '}are on promotion
+                {totalSavings > 0 && (
+                  <> — save up to <span className="font-semibold">${totalSavings.toFixed(2)}</span></>
+                )}
+              </p>
+              <Link
+                href="/?replan=1"
+                className="flex-shrink-0 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Update my plan →
+              </Link>
+            </div>
+          )
+        })()}
 
         {/* Section tabs */}
         {hasContent && presentSections.length > 0 && (

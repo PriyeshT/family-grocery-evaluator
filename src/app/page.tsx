@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import type { ShoppingPlan } from '@/types'
 import type { AgentTrace } from '@/trace/types'
@@ -50,6 +50,13 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (window.location.search.includes('replan=1')) {
+      window.history.replaceState({}, '', '/')
+      void refresh()
+    }
+  }, [refresh])
 
   const sortedItems =
     result?.plan.items.slice().sort((a, b) => (b.deal.savingPct ?? 0) - (a.deal.savingPct ?? 0)) ?? []
