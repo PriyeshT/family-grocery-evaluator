@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import type { ShoppingPlan } from '@/types'
 import type { AgentTrace } from '@/trace/types'
 import { loadShoppingList } from '@/lib/shopping-list-storage'
@@ -80,10 +81,30 @@ export default function DashboardPage() {
         )}
 
         {!result && !loading && !error && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">
-              Click <strong>Refresh deals</strong> to run the agent.
-            </p>
+          <div className="max-w-md mx-auto py-12">
+            <h2 className="text-base font-semibold text-brand-text-primary mb-6 text-center">
+              Get started in 3 steps
+            </h2>
+            <ol className="space-y-5">
+              {[
+                {
+                  label: <><Link href="/shopping-list" className="text-brand-primary hover:underline font-semibold">Shopping List</Link> — Add your grocery items and preferred brands</>,
+                },
+                {
+                  label: <><span className="font-semibold text-brand-text-primary">Refresh Deals</span> — The AI agent finds the best current promotions for your list</>,
+                },
+                {
+                  label: <><span className="font-semibold text-brand-text-primary">Browse Promotions</span> — See what&apos;s on sale this week, add items you&apos;ve missed</>,
+                },
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-4">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-primary text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-brand-text-secondary leading-relaxed">{step.label}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
