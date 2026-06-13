@@ -95,6 +95,12 @@ export default function DashboardPage() {
 
         {result && !loading && (
           <>
+            {result.plan.summary && (
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+                {result.plan.summary}
+              </div>
+            )}
+
             <div className="flex gap-1 border-b border-gray-200">
               <TabButton active={activeTab === 'deals'} onClick={() => setActiveTab('deals')}>
                 Deals ({sortedItems.length})

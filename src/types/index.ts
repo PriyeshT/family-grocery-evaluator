@@ -14,6 +14,12 @@ export interface RawDeal {
   promoLabel: string | null
 }
 
+export interface SubstitutedBrand {
+  term: string
+  found: string
+  preferred: string
+}
+
 export interface ShoppingPlan {
   run_id: string
   generated_at: string
@@ -21,6 +27,8 @@ export interface ShoppingPlan {
   unmatched_items: string[]
   estimated_total: number
   estimated_savings: number
+  summary: string
+  substituted_brands: SubstitutedBrand[]
 }
 
 export interface PlannedItem {
