@@ -3,13 +3,25 @@ import type { FairPricePromotion } from '@/types'
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 
-const mockCreate = vi.hoisted(() => vi.fn())
+const mockGenerateText = vi.hoisted(() => vi.fn())
 const mockHandleScrapeSection = vi.hoisted(() => vi.fn())
 
+// Suppress module-level `new Anthropic()` in match-promotions.ts
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
-    messages = { create: mockCreate }
+    messages = { create: vi.fn() }
   },
+}))
+
+// tool() is a passthrough — mock it as identity so execute is accessible on the tools object
+vi.mock('ai', () => ({
+  generateText: mockGenerateText,
+  tool: (config: unknown) => config,
+  stepCountIs: (n: number) => n,
+}))
+
+vi.mock('@ai-sdk/anthropic', () => ({
+  createAnthropic: () => (_modelId: string) => ({ id: _modelId }),
 }))
 
 vi.mock('@/agents/tools', async (importOriginal) => {
@@ -51,38 +63,9 @@ const scrapeHandlerFallbackResult = {
   error: 'mock fallback',
 }
 
-function makeToolUseResponse(
-  id: string,
-  toolName: string,
-  toolId: string,
-  input: unknown
-) {
-  return {
-    id,
-    type: 'message',
-    role: 'assistant',
-    content: [{ type: 'tool_use', id: toolId, name: toolName, input }],
-    stop_reason: 'tool_use',
-    model: AGENT_MODEL,
-    stop_sequence: null,
-    usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-  }
-}
-
-const AGENT_MODEL = 'claude-haiku-4-5-20251001'
-
 const testShoppingList = [{ term: 'milk', preferredBrand: 'Greenfields' }]
 
-const scrapeResponse = makeToolUseResponse('msg_1', 'scrape_fairprice_section', 'toolu_1', {
-  section: 'fresh-picks',
-})
-
-const matchResponse = makeToolUseResponse('msg_2', 'match_items', 'toolu_2', {
-  shopping_list: testShoppingList,
-  promotions: [testPromotion],
-})
-
-const recordResponse = makeToolUseResponse('msg_3', 'record_recommendation', 'toolu_3', {
+const recordArgs = {
   matched: [
     {
       shopping_list_term: 'milk',
@@ -92,27 +75,40 @@ const recordResponse = makeToolUseResponse('msg_3', 'record_recommendation', 'to
       saving_amount: 0.65,
       saving_pct: 20.3,
       confidence: 1,
-      match_method: 'exact',
+      match_method: 'exact' as const,
     },
   ],
   alternatives: [],
   unmatched: [],
   savings_summary: 'Total savings: $0.65',
-})
+}
 
 // ─── Tests ──────────────────────────────────────────────────────────────────────
 
 import { runGroceryAgent } from '@/agents/grocery-agent'
 import { traceStore } from '@/trace/store'
 
+// Simulate the agentic loop: generateText calls execute functions in sequence,
+// which is how the real SDK drives the loop — tools run as Claude calls them.
+function makeGenerateTextMock(fallback = false) {
+  return async ({ tools }: { tools: Record<string, { execute: Function }> }) => {
+    const scrapeResult = await tools.scrape_fairprice_section.execute({ section: 'fresh-picks' })
+    await tools.match_items.execute({
+      shopping_list: testShoppingList,
+      promotions: scrapeResult.promotions,
+    })
+    await tools.record_recommendation.execute(
+      fallback ? { ...recordArgs, matched: [{ ...recordArgs.matched[0] }] } : recordArgs
+    )
+    return { steps: [], text: '', finishReason: 'stop' }
+  }
+}
+
 describe('runGroceryAgent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHandleScrapeSection.mockResolvedValue(scrapeHandlerResult)
-    mockCreate
-      .mockResolvedValueOnce(scrapeResponse)
-      .mockResolvedValueOnce(matchResponse)
-      .mockResolvedValueOnce(recordResponse)
+    mockGenerateText.mockImplementation(makeGenerateTextMock())
   })
 
   it('returns a plan and trace', async () => {
@@ -153,12 +149,14 @@ describe('runGroceryAgent', () => {
 
   it('usingDemoData is true when scraper uses fallback', async () => {
     mockHandleScrapeSection.mockResolvedValue(scrapeHandlerFallbackResult)
+    mockGenerateText.mockImplementation(makeGenerateTextMock(true))
     const { usingDemoData } = await runGroceryAgent('manual', testShoppingList)
     expect(usingDemoData).toBe(true)
   })
 
   it('trace scrape step reflects fallback status', async () => {
     mockHandleScrapeSection.mockResolvedValue(scrapeHandlerFallbackResult)
+    mockGenerateText.mockImplementation(makeGenerateTextMock(true))
     const { trace } = await runGroceryAgent('manual', testShoppingList)
     expect(trace.steps.scrape?.fairprice.status).toBe('fallback_used')
   })
@@ -181,6 +179,7 @@ describe('runGroceryAgent', () => {
 
   it('scrape errors are recorded in trace when fallback used', async () => {
     mockHandleScrapeSection.mockResolvedValue(scrapeHandlerFallbackResult)
+    mockGenerateText.mockImplementation(makeGenerateTextMock(true))
     const { trace } = await runGroceryAgent('manual', testShoppingList)
     expect(trace.errors.length).toBeGreaterThan(0)
   })
@@ -196,5 +195,11 @@ describe('runGroceryAgent', () => {
     await runGroceryAgent('manual', testShoppingList)
     expect(mockHandleScrapeSection).toHaveBeenCalledOnce()
     expect(mockHandleScrapeSection).toHaveBeenCalledWith({ section: 'fresh-picks' })
+  })
+
+  it('uses stopWhen with stepCountIs guard', async () => {
+    await runGroceryAgent('manual', testShoppingList)
+    const callArgs = mockGenerateText.mock.calls[0][0]
+    expect(callArgs.stopWhen).toBeDefined()
   })
 })

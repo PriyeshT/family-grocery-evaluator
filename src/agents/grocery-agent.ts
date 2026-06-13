@@ -1,14 +1,13 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { generateText, tool, stepCountIs } from 'ai'
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { z } from 'zod'
 import { TraceBuilder } from '@/trace/builder'
 import { traceStore } from '@/trace/store'
 import { SHOPPING_LIST } from '@/lib/shopping-list'
 import {
-  TOOL_DEFINITIONS,
   handleScrapeSection,
   handleMatchItems,
   handleRecordRecommendation,
-  type ScrapeToolInput,
-  type MatchItemsToolInput,
   type RecordRecommendationToolInput,
 } from '@/agents/tools'
 import type {
@@ -64,7 +63,7 @@ export async function runGroceryAgent(
   shoppingList: ShoppingListItem[] = SHOPPING_LIST
 ): Promise<AgentResult> {
   const builder = new TraceBuilder(triggerType)
-  const client = new Anthropic()
+  const anthropicProvider = createAnthropic()
 
   const allPromotions: FairPricePromotion[] = []
   const promotionsByName = new Map<string, FairPricePromotion>()
@@ -74,95 +73,127 @@ export async function runGroceryAgent(
   let finalRecommendation: RecordRecommendationToolInput | null = null
   let totalScrapeDurationMs = 0
 
-  const messages: Anthropic.Messages.MessageParam[] = [
-    {
-      role: 'user',
-      content: `Find the best FairPrice promotions for this shopping list:\n${JSON.stringify(shoppingList, null, 2)}`,
-    },
-  ]
-
-  let continueLoop = true
-  while (continueLoop) {
-    const response = await client.messages.create({
-      model: AGENT_MODEL,
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      tools: TOOL_DEFINITIONS,
-      messages,
-    })
-
-    messages.push({ role: 'assistant', content: response.content })
-
-    if (response.stop_reason !== 'tool_use') {
-      continueLoop = false
-      break
-    }
-
-    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
-
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue
-
-      if (block.name === 'scrape_fairprice_section') {
-        const input = block.input as ScrapeToolInput
-        const section = input.section
-        sectionsSelected.push(section)
-
+  const tools = {
+    scrape_fairprice_section: tool({
+      description:
+        'Scrapes live promotions from one FairPrice section. ' +
+        'Call once per section you want data from — results are cached in memory for the session. ' +
+        'Available sections: flash-deals (time-limited flash sales), price-slash (lowest price in 30 days), ' +
+        'fresh-picks (fresh produce deals), weekly (weekly promotions). ' +
+        'Returns the promotion list for that section including prices, savings, and promo labels.',
+      inputSchema: z.object({
+        section: z
+          .enum(['flash-deals', 'price-slash', 'fresh-picks', 'weekly'])
+          .describe('The FairPrice promotion section to scrape'),
+      }),
+      execute: async ({ section }) => {
         const scrapeStart = Date.now()
-        const result = await handleScrapeSection(input)
+        const result = await handleScrapeSection({ section })
         const scrapeDuration = Date.now() - scrapeStart
         totalScrapeDurationMs += scrapeDuration
+        sectionsSelected.push(section)
 
         for (const p of result.promotions) {
           allPromotions.push(p)
           promotionsByName.set(p.name, p)
         }
-
         if (result.usedFallback) usedFallback = true
 
-        const sectionStatus: SectionScrapeResult['status'] =
+        const status: SectionScrapeResult['status'] =
           result.count === 0 ? 'failed' : result.usedFallback ? 'fallback_used' : 'success'
-
         sectionResults.push({
           section,
           items_found: result.count,
           duration_ms: scrapeDuration,
-          status: sectionStatus,
+          status,
           ...(result.error ? { error: result.error } : {}),
         })
 
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: JSON.stringify(result),
-        })
-      } else if (block.name === 'match_items') {
-        const input = block.input as MatchItemsToolInput
-        const result = handleMatchItems(input)
+        return result
+      },
+    }),
 
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: JSON.stringify(result),
-        })
-      } else if (block.name === 'record_recommendation') {
-        const input = block.input as RecordRecommendationToolInput
-        finalRecommendation = input
-        const result = handleRecordRecommendation(input)
+    match_items: tool({
+      description:
+        'Matches shopping list items against a set of scraped promotions using exact and fuzzy matching. ' +
+        'Exact matches (item name contained in promotion name) are preferred; fuzzy matching falls back to ' +
+        'token-overlap scoring above a confidence threshold. ' +
+        'Returns matched promotions with confidence scores, and a list of items with no match found. ' +
+        'Call after scraping to find which promotions are relevant to the shopping list.',
+      inputSchema: z.object({
+        shopping_list: z
+          .array(
+            z.object({
+              term: z.string().describe('The item name or search term (e.g. "chicken breast", "whole milk")'),
+              preferredBrand: z.string().optional().describe('Optional brand preference for this item'),
+            })
+          )
+          .describe('The shopping list items to match against promotions'),
+        promotions: z
+          .array(
+            z.object({
+              name: z.string(),
+              salePrice: z.number(),
+              originalPrice: z.number().nullable().optional(),
+              savingAmount: z.number().nullable().optional(),
+              savingPct: z.number().nullable().optional(),
+              promoLabel: z.string().nullable().optional(),
+              category: z.string().nullable().optional(),
+              imageUrl: z.string().nullable().optional(),
+              url: z.string().nullable().optional(),
+              validUntil: z.string().nullable().optional(),
+            })
+          )
+          .describe('The promotions to match against, as returned by scrape_fairprice_section'),
+      }),
+      execute: async (input) =>
+        handleMatchItems(input as { shopping_list: ShoppingListItem[]; promotions: FairPricePromotion[] }),
+    }),
 
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: JSON.stringify(result),
-        })
-        continueLoop = false
-      }
-    }
-
-    if (toolResults.length > 0) {
-      messages.push({ role: 'user', content: toolResults })
-    }
+    record_recommendation: tool({
+      description:
+        'Finalises the agent run. Call this exactly once — after all scraping and matching is complete — ' +
+        'to record the final recommendation. Include every matched item, any alternatives you considered ' +
+        '(e.g. a different brand when the preferred one is not on sale), unmatched items, and a plain-English ' +
+        'savings summary. This is always the last tool call in the loop.',
+      inputSchema: z.object({
+        matched: z.array(
+          z.object({
+            shopping_list_term: z.string(),
+            promotion_name: z.string(),
+            sale_price: z.number(),
+            original_price: z.number().optional(),
+            saving_amount: z.number().optional(),
+            saving_pct: z.number().optional(),
+            confidence: z.number().optional(),
+            match_method: z.enum(['exact', 'fuzzy']).optional(),
+          })
+        ),
+        alternatives: z.array(
+          z.object({
+            shopping_list_term: z.string(),
+            reason: z.string(),
+            promotion_name: z.string(),
+            sale_price: z.number(),
+          })
+        ),
+        unmatched: z.array(z.string()),
+        savings_summary: z.string().optional(),
+      }),
+      execute: async (input) => {
+        finalRecommendation = input as RecordRecommendationToolInput
+        return handleRecordRecommendation(input as RecordRecommendationToolInput)
+      },
+    }),
   }
+
+  await generateText({
+    model: anthropicProvider(AGENT_MODEL),
+    system: SYSTEM_PROMPT,
+    prompt: `Find the best FairPrice promotions for this shopping list:\n${JSON.stringify(shoppingList, null, 2)}`,
+    tools,
+    stopWhen: stepCountIs(10),
+  })
 
   // Build trace scrape step with section-level detail
   const overallStatus: 'success' | 'fallback_used' | 'failed' =
@@ -185,7 +216,8 @@ export async function runGroceryAgent(
   }
 
   // Build matching step from final recommendation
-  const matched: MatchedItem[] = (finalRecommendation?.matched ?? []).map((m) => {
+  const rec = finalRecommendation as RecordRecommendationToolInput | null
+  const matched: MatchedItem[] = (rec?.matched ?? []).map((m) => {
     const fullPromotion = promotionsByName.get(m.promotion_name)
     return {
       shopping_list_term: m.shopping_list_term,
@@ -206,7 +238,7 @@ export async function runGroceryAgent(
     }
   })
 
-  const unmatched = finalRecommendation?.unmatched ?? []
+  const unmatched = rec?.unmatched ?? []
 
   const lowConfidence = matched.filter((m) => m.confidence < 0.7 && m.match_method === 'fuzzy')
   if (lowConfidence.length > 0) {
