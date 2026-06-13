@@ -1,6 +1,7 @@
 import type { AgentTrace } from '@/trace/types'
 import { TraceHeader } from './TraceHeader'
 import { TraceScrapeStep } from './TraceScrapeStep'
+import { TraceLlmSteps } from './TraceLlmSteps'
 import { TraceMatchingStep } from './TraceMatchingStep'
 import { TraceErrors } from './TraceErrors'
 
@@ -17,6 +18,11 @@ export function TracePanel({ trace }: TracePanelProps) {
       <div className="p-4 space-y-3">
         <TraceHeader trace={trace} />
         <TraceScrapeStep step={trace.steps.scrape} />
+        <TraceLlmSteps
+          steps={trace.llm_steps}
+          totalInputTokens={trace.total_input_tokens}
+          totalOutputTokens={trace.total_output_tokens}
+        />
         <TraceMatchingStep step={trace.steps.matching} />
         <TraceErrors errors={trace.errors} warnings={trace.warnings} />
       </div>
