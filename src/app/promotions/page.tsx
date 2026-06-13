@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { PromotionsResult, PromotionsMatchResult, MatchedPromotion, FairPricePromotion, FairPriceSection } from '@/types'
+import type { PromotionsResult, PromotionsMatchResult, MatchedPromotion, FairPricePromotion, FairPriceSection, DealHistoryStats } from '@/types'
 import { SECTION_LABELS, SECTION_ORDER } from '@/types'
 import { PromotionCard } from '@/components/promotions/PromotionCard'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
@@ -32,6 +32,7 @@ export default function PromotionsPage() {
   const [listTerms, setListTerms] = useState<Set<string>>(new Set())
   // Names added during this session
   const [addedNames, setAddedNames] = useState<Set<string>>(new Set())
+  const [dealHistoryByName, setDealHistoryByName] = useState<Record<string, DealHistoryStats>>({})
 
   useEffect(() => {
     const items = loadShoppingList()
@@ -61,7 +62,9 @@ export default function PromotionsPage() {
       if (mode === 'list') {
         setMatchData((await res.json()) as PromotionsMatchResult)
       } else {
-        setData((await res.json()) as PromotionsResult)
+        const json = (await res.json()) as PromotionsResult
+        setData(json)
+        if (json.dealHistoryByName) setDealHistoryByName(json.dealHistoryByName)
       }
       setActiveTab('all-sections')
     } catch (err) {
@@ -130,6 +133,8 @@ export default function PromotionsPage() {
     // In "list" mode, matched items are already on the list by definition
     const onList = viewMode === 'list' ? true : isOnList(promotion.name)
     const justAdded = addedNames.has(promotion.name)
+    const normalizedName = promotion.name.toLowerCase().trim().replace(/\s+/g, ' ')
+    const dealHistory = dealHistoryByName[normalizedName]
     return (
       <PromotionCard
         key={`${promotion.name}-${i}`}
@@ -140,6 +145,7 @@ export default function PromotionsPage() {
         isOnList={onList && !justAdded}
         wasJustAdded={justAdded}
         onAddToList={onList || justAdded ? undefined : () => handleAddToList(promotion.name)}
+        dealHistory={dealHistory}
       />
     )
   }

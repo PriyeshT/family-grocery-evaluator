@@ -1,4 +1,4 @@
-import type { FairPricePromotion } from '@/types'
+import type { FairPricePromotion, DealHistoryStats } from '@/types'
 import { SECTION_LABELS } from '@/types'
 
 interface PromotionCardProps {
@@ -9,9 +9,10 @@ interface PromotionCardProps {
   isOnList?: boolean
   wasJustAdded?: boolean
   onAddToList?: () => void
+  dealHistory?: DealHistoryStats
 }
 
-export function PromotionCard({ promotion, matchMethod, confidence, shoppingListTerm, isOnList, wasJustAdded, onAddToList }: PromotionCardProps) {
+export function PromotionCard({ promotion, matchMethod, confidence, shoppingListTerm, isOnList, wasJustAdded, onAddToList, dealHistory }: PromotionCardProps) {
   const hasSaving = promotion.savingPct !== null && promotion.savingPct > 0
   const href = promotion.url?.startsWith('http') ? promotion.url : `https://www.fairprice.com.sg${promotion.url ?? ''}`
 
@@ -68,6 +69,21 @@ export function PromotionCard({ promotion, matchMethod, confidence, shoppingList
           </span>
         )}
       </div>
+
+      {dealHistory && (
+        <div className="flex flex-wrap gap-1.5">
+          {dealHistory.weeksOnPromotion >= 2 && (
+            <span className="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5">
+              On sale {dealHistory.weeksOnPromotion} week{dealHistory.weeksOnPromotion !== 1 ? 's' : ''}
+            </span>
+          )}
+          {dealHistory.isLowestPrice && (
+            <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+              Best price in {dealHistory.lowestPriceWindowWeeks} week{dealHistory.lowestPriceWindowWeeks !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-1 border-t border-gray-100">
         <div className="flex items-center gap-2">
