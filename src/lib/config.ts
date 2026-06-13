@@ -3,6 +3,7 @@ export const config = {
   maxStoredTraces: 10,
   requestTimeoutMs: 8000,
   promotionsCacheTtlMs: 60 * 60 * 1000,
+  agentCacheMaxAgeMs: 24 * 60 * 60 * 1000,
 } as const
 
 export type Config = typeof config
