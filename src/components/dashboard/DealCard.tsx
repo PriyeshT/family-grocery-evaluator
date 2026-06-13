@@ -6,7 +6,7 @@ interface DealCardProps {
 }
 
 const STORE_LABEL = 'FairPrice'
-const STORE_COLOR = 'bg-blue-50 border-blue-200 text-blue-700'
+const STORE_COLOR = 'bg-brand-secondary/10 border-brand-secondary/30 text-brand-secondary'
 
 export function DealCard({ item }: DealCardProps) {
   const { deal, shopping_list_term, preferredBrand, brandMatched } = item
@@ -15,11 +15,11 @@ export function DealCard({ item }: DealCardProps) {
   const showBrandBadge = preferredBrand !== undefined
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-lg border border-brand-border bg-brand-surface p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+            <p className="text-xs text-brand-text-secondary font-medium uppercase tracking-wide">
               {shopping_list_term}
             </p>
             {showBrandBadge && brandMatched && (
@@ -36,12 +36,12 @@ export function DealCard({ item }: DealCardProps) {
               </span>
             )}
           </div>
-          <p className="text-sm font-medium text-gray-900 truncate" title={deal.name}>
+          <p className="text-sm font-medium text-brand-text-primary truncate" title={deal.name}>
             {deal.name}
           </p>
         </div>
         {hasSaving && (
-          <span className="flex-shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+          <span className="flex-shrink-0 text-xs font-bold text-brand-primary bg-brand-accent/30 border border-brand-accent rounded px-1.5 py-0.5">
             -{deal.savingPct}%
           </span>
         )}
@@ -49,7 +49,7 @@ export function DealCard({ item }: DealCardProps) {
 
       <div className="mt-3 flex items-end justify-between">
         <div>
-          <span className="text-lg font-bold text-gray-900">${deal.salePrice.toFixed(2)}</span>
+          <span className="text-lg font-bold text-brand-text-primary">${deal.salePrice.toFixed(2)}</span>
           {deal.originalPrice && (
             <span className="ml-2 text-sm text-gray-400 line-through">
               ${deal.originalPrice.toFixed(2)}
@@ -63,12 +63,12 @@ export function DealCard({ item }: DealCardProps) {
 
       <div className="mt-2 flex items-center justify-between">
         {deal.promoLabel && (
-          <p className="text-xs text-emerald-600 font-medium">{deal.promoLabel}</p>
+          <p className="text-xs text-brand-secondary font-medium">{deal.promoLabel}</p>
         )}
         {isFairPricePromo && (
           <Link
             href="/promotions"
-            className="ml-auto flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2.5 py-0.5 hover:bg-orange-100 transition-colors"
+            className="ml-auto flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-brand-tertiary bg-brand-tertiary/10 border border-brand-tertiary/30 rounded-full px-2.5 py-0.5 hover:bg-brand-tertiary/20 transition-colors"
           >
             <span>On Sale</span>
             <span aria-hidden>→</span>

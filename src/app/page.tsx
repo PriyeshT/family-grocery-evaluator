@@ -61,12 +61,12 @@ export default function DashboardPage() {
     result?.plan.items.slice().sort((a, b) => (b.deal.savingPct ?? 0) - (a.deal.savingPct ?? 0)) ?? []
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <main className="min-h-screen bg-brand-bg">
+      <header className="bg-brand-surface border-b border-brand-border">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">SG Grocery Deals</h1>
-            <p className="text-xs text-gray-500">FairPrice</p>
+            <h1 className="text-lg font-bold text-brand-primary">SG Grocery Deals</h1>
+            <p className="text-xs text-brand-text-secondary">FairPrice</p>
           </div>
           <RefreshButton onClick={refresh} loading={loading} />
         </div>
@@ -94,12 +94,12 @@ export default function DashboardPage() {
         {result && !loading && (
           <>
             {result.plan.summary && (
-              <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+              <div className="rounded-lg border border-brand-secondary/30 bg-brand-secondary/10 px-4 py-3 text-sm text-brand-primary">
                 {result.plan.summary}
               </div>
             )}
 
-            <div className="flex gap-1 border-b border-gray-200">
+            <div className="flex gap-1 border-b border-brand-border">
               <TabButton active={activeTab === 'deals'} onClick={() => setActiveTab('deals')}>
                 Deals ({sortedItems.length})
               </TabButton>
@@ -122,13 +122,13 @@ export default function DashboardPage() {
                   </div>
                 )}
                 {result.plan.unmatched_items.length > 0 && (
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">No deals found for:</p>
+                  <div className="rounded-lg border border-brand-border bg-brand-surface p-4">
+                    <p className="text-sm font-medium text-brand-text-secondary mb-2">No deals found for:</p>
                     <div className="flex flex-wrap gap-2">
                       {result.plan.unmatched_items.map((item) => (
                         <span
                           key={item}
-                          className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
+                          className="text-xs bg-brand-bg text-brand-text-secondary px-2 py-0.5 rounded"
                         >
                           {item}
                         </span>
@@ -136,13 +136,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 )}
-                <div className="text-right text-sm text-gray-500">
+                <div className="text-right text-sm text-brand-text-secondary">
                   Est. total:{' '}
-                  <span className="font-mono font-medium text-gray-800">
+                  <span className="font-mono font-medium text-brand-text-primary">
                     ${result.plan.estimated_total.toFixed(2)}
                   </span>{' '}
                   · Est. savings:{' '}
-                  <span className="font-mono font-medium text-emerald-700">
+                  <span className="font-mono font-medium text-brand-secondary">
                     ${result.plan.estimated_savings.toFixed(2)}
                   </span>
                 </div>
@@ -171,8 +171,8 @@ function TabButton({
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
         active
-          ? 'border-indigo-600 text-indigo-700'
-          : 'border-transparent text-gray-500 hover:text-gray-700'
+          ? 'border-brand-primary text-brand-primary'
+          : 'border-transparent text-brand-text-secondary hover:text-brand-primary'
       }`}
     >
       {children}

@@ -78,25 +78,25 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-brand-border bg-brand-surface shadow-sm overflow-hidden">
 
       {/* Navy header */}
-      <div className="bg-[#1a2744] px-6 py-4 flex items-center justify-between">
+      <div className="bg-brand-primary px-6 py-4 flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold tracking-widest text-white uppercase">Your Shopping List</h2>
-          <p className="text-xs mt-0.5 font-medium text-yellow-400">
+          <p className="text-xs mt-0.5 font-medium text-brand-accent">
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </p>
         </div>
         {editingOriginal && (
-          <span className="text-xs text-yellow-300 animate-pulse">Editing…</span>
+          <span className="text-xs text-brand-accent animate-pulse">Editing…</span>
         )}
       </div>
 
       {/* Inline edit form — full-width above grid when active */}
       {editingOriginal && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-yellow-800 uppercase tracking-wide w-full sm:w-auto">
+        <div className="bg-brand-accent/20 border-b border-brand-accent/40 px-4 py-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-brand-primary uppercase tracking-wide w-full sm:w-auto">
             Edit item
           </span>
           <input
@@ -106,7 +106,7 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
             onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingOriginal(null) }}
             placeholder="Item name"
             autoFocus
-            className="flex-1 min-w-0 text-sm border border-yellow-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+            className="flex-1 min-w-0 text-sm border border-brand-accent/60 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-brand-accent bg-white"
           />
           <input
             type="text"
@@ -114,12 +114,12 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
             onChange={(e) => setEditBrand(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingOriginal(null) }}
             placeholder="Preferred brand (optional)"
-            className="w-44 text-sm border border-yellow-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+            className="w-44 text-sm border border-brand-accent/60 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-brand-accent bg-white"
           />
           <button
             onClick={commitEdit}
             disabled={!editTerm.trim()}
-            className="px-4 py-1.5 bg-[#1a2744] text-white text-sm font-semibold rounded-lg hover:bg-[#243358] disabled:opacity-40 transition-colors"
+            className="px-4 py-1.5 bg-brand-primary text-white text-sm font-semibold rounded-lg hover:bg-brand-primary/90 disabled:opacity-40 transition-colors"
           >
             Save
           </button>
@@ -149,11 +149,11 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
               >
                 <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm flex-shrink-0 mt-[3px]" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[#1a2744] capitalize leading-snug font-medium">
+                  <p className="text-sm text-brand-primary capitalize leading-snug font-medium">
                     {item.term}
                   </p>
                   {item.preferredBrand && (
-                    <p className="text-xs text-yellow-600 font-medium leading-none mt-0.5">
+                    <p className="text-xs text-brand-secondary font-medium leading-none mt-0.5">
                       {item.preferredBrand}
                     </p>
                   )}
@@ -162,7 +162,7 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
                   <button
                     onClick={() => startEdit(item)}
                     title="Edit"
-                    className="p-0.5 text-gray-300 hover:text-[#1a2744] transition-colors"
+                    className="p-0.5 text-gray-300 hover:text-brand-primary transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828A2 2 0 019 16.5H7.5v-1.5a2 2 0 01.586-1.414z" />
@@ -185,7 +185,7 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
       </div>
 
       {/* Add / bulk form */}
-      <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 mt-2 space-y-2">
+      <div className="border-t border-brand-border bg-brand-bg px-4 py-3 mt-2 space-y-2">
         {bulkMode ? (
           <div className="space-y-2">
             <textarea
@@ -195,13 +195,13 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
               placeholder="milk (Greenfields), eggs, chicken (Seara), yoghurt"
               rows={3}
               autoFocus
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent resize-none"
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent resize-none"
             />
             <div className="flex items-center gap-2">
               <button
                 onClick={addBulkItems}
                 disabled={!bulkInput.trim()}
-                className="px-4 py-1.5 bg-[#1a2744] text-white text-sm font-semibold rounded-lg hover:bg-[#243358] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-1.5 bg-brand-primary text-white text-sm font-semibold rounded-lg hover:bg-brand-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Add all
               </button>
@@ -222,7 +222,7 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
               onChange={(e) => setNewTerm(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') addItem() }}
               placeholder="Add item (e.g. tomatoes)"
-              className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent"
+              className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
             />
             <input
               type="text"
@@ -230,12 +230,12 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
               onChange={(e) => setNewBrand(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') addItem() }}
               placeholder="Brand (optional)"
-              className="w-36 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent"
+              className="w-36 text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
             />
             <button
               onClick={addItem}
               disabled={!newTerm.trim()}
-              className="px-4 py-1.5 bg-[#1a2744] text-white text-sm font-semibold rounded-lg hover:bg-[#243358] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-1.5 bg-brand-primary text-white text-sm font-semibold rounded-lg hover:bg-brand-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Add
             </button>
@@ -244,7 +244,7 @@ export function ShoppingListEditor({ items, onChange }: ShoppingListEditorProps)
         {!bulkMode && (
           <button
             onClick={() => setBulkMode(true)}
-            className="text-xs text-[#1a2744] opacity-60 hover:opacity-100 transition-opacity"
+            className="text-xs text-brand-primary opacity-60 hover:opacity-100 transition-opacity"
           >
             + Bulk add (comma-separated)
           </button>
