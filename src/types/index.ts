@@ -68,6 +68,7 @@ export interface PromotionsResult {
   scrapedAt: string
   usedFallback: boolean
   error?: string
+  dealHistoryByName?: Record<string, DealHistoryStats>
 }
 
 export interface MatchedPromotion {
@@ -84,6 +85,20 @@ export interface PromotionsMatchResult {
   unmatched: string[]
   scrapedAt: string
   usedFallback: boolean
+}
+
+export interface DealSnapshot {
+  itemName: string
+  store: 'fairprice'
+  salePrice: number
+  weekKey: string
+  scrapedAt: string
+}
+
+export interface DealHistoryStats {
+  weeksOnPromotion: number
+  isLowestPrice: boolean
+  lowestPriceWindowWeeks: number
 }
 
 export interface OpportunityItem {
