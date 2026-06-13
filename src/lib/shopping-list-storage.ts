@@ -26,3 +26,12 @@ export function updateItemBrand(term: string, preferredBrand: string | undefined
   )
   saveShoppingList(updated)
 }
+
+// Returns false if the term already exists (case-insensitive), true if added.
+export function addItemToList(term: string): boolean {
+  const items = loadShoppingList()
+  const normalised = term.trim().toLowerCase()
+  if (items.some((item) => item.term.toLowerCase() === normalised)) return false
+  saveShoppingList([...items, { term: term.trim() }])
+  return true
+}

@@ -6,9 +6,12 @@ interface PromotionCardProps {
   matchMethod?: 'exact' | 'fuzzy' | 'llm'
   confidence?: number
   shoppingListTerm?: string
+  isOnList?: boolean
+  wasJustAdded?: boolean
+  onAddToList?: () => void
 }
 
-export function PromotionCard({ promotion, matchMethod, confidence, shoppingListTerm }: PromotionCardProps) {
+export function PromotionCard({ promotion, matchMethod, confidence, shoppingListTerm, isOnList, wasJustAdded, onAddToList }: PromotionCardProps) {
   const hasSaving = promotion.savingPct !== null && promotion.savingPct > 0
   const href = promotion.url?.startsWith('http') ? promotion.url : `https://www.fairprice.com.sg${promotion.url ?? ''}`
 
@@ -77,16 +80,34 @@ export function PromotionCard({ promotion, matchMethod, confidence, shoppingList
             <span className="text-xs text-blue-600 font-medium">{promotion.promoLabel}</span>
           )}
         </div>
-        {promotion.url && (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-md transition-colors"
-          >
-            View →
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          {isOnList ? (
+            <span className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md">
+              On your list
+            </span>
+          ) : wasJustAdded ? (
+            <span className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md">
+              Added
+            </span>
+          ) : onAddToList ? (
+            <button
+              onClick={onAddToList}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-md transition-colors"
+            >
+              + Add to list
+            </button>
+          ) : null}
+          {promotion.url && (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-md transition-colors"
+            >
+              View →
+            </a>
+          )}
+        </div>
       </div>
     </div>
   )
