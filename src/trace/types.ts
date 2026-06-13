@@ -1,11 +1,31 @@
 import type { RawDeal, ShoppingPlan, FairPriceSection } from '@/types'
 
+export interface LlmStep {
+  step_number: number
+  model: string
+  input_tokens: number
+  output_tokens: number
+  tool_called: string | null
+  reasoning: string | null
+}
+
+export interface ToolCallRecord {
+  tool: string
+  input: Record<string, unknown>
+  output: unknown
+  duration_ms: number
+}
+
 export interface AgentTrace {
   run_id: string
   triggered_at: string
   trigger_type: 'manual' | 'scheduled' | 'api'
   duration_ms: number
   steps: TraceSteps
+  llm_steps: LlmStep[]
+  tool_calls: ToolCallRecord[]
+  total_input_tokens: number
+  total_output_tokens: number
   final_plan: ShoppingPlan | null
   errors: TraceError[]
   warnings: string[]
