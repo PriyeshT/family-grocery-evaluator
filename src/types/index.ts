@@ -100,3 +100,15 @@ export interface DealHistoryStats {
   isLowestPrice: boolean
   lowestPriceWindowWeeks: number
 }
+
+export interface OpportunityItem {
+  promotion: FairPricePromotion
+  rationale: string
+  rank: number
+}
+
+export interface OpportunitiesResult {
+  opportunities: OpportunityItem[]
+  scrapedAt: string
+  usedFallback: boolean
+}
