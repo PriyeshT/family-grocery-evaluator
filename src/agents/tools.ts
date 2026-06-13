@@ -6,6 +6,7 @@ import type {
   FairPricePromotion,
   ShoppingListItem,
   MatchedPromotion,
+  SubstitutedBrand,
 } from '@/types'
 
 // ─── Tool input types ──────────────────────────────────────────────────────
@@ -42,6 +43,8 @@ export interface RecordRecommendationToolInput {
   alternatives: AlternativeItem[]
   unmatched: string[]
   savings_summary?: string
+  summary?: string
+  substituted_brands?: SubstitutedBrand[]
 }
 
 // ─── Tool schemas ──────────────────────────────────────────────────────────
@@ -182,8 +185,27 @@ export const TOOL_DEFINITIONS: Anthropic.Messages.Tool[] = [
           type: 'string',
           description: 'Human-readable summary of the total estimated savings across all matched items',
         },
+        summary: {
+          type: 'string',
+          description:
+            'Plain-English recommendation in 2-4 sentences. Cover: how many items matched, estimated savings, ' +
+            'any notable brand substitutions, and whether this is a good week to stock up.',
+        },
+        substituted_brands: {
+          type: 'array',
+          description: 'Items where the preferred brand was not on promotion and a substitute was used',
+          items: {
+            type: 'object',
+            properties: {
+              term: { type: 'string', description: 'The shopping list term' },
+              found: { type: 'string', description: 'The brand found on promotion' },
+              preferred: { type: 'string', description: 'The preferred brand that was not available' },
+            },
+            required: ['term', 'found', 'preferred'],
+          },
+        },
       },
-      required: ['matched', 'alternatives', 'unmatched'],
+      required: ['matched', 'alternatives', 'unmatched', 'summary'],
     },
   },
 ]

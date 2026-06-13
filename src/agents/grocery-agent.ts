@@ -17,6 +17,7 @@ import type {
   FairPricePromotion,
   FairPriceSection,
   RawDeal,
+  SubstitutedBrand,
 } from '@/types'
 import type { AgentTrace, MatchedItem, SectionScrapeResult } from '@/trace/types'
 
@@ -37,12 +38,38 @@ How to proceed:
 4. Call only the sections you need; you are NOT required to call all four
 5. After scraping, call match_items to find promotions matching the list
 6. If many items remain unmatched, consider scraping another section
-7. Always end with record_recommendation once you have your best results`
+7. Always end with record_recommendation once you have your best results
+
+When calling record_recommendation:
+- Write a plain-English summary (2-4 sentences): how many items matched, total estimated savings, and whether it is a good week to stock up on anything in particular
+- Populate substituted_brands for any item where the preferred brand was not on promotion and you matched a different brand instead`
 
 export interface AgentResult {
   plan: ShoppingPlan
   trace: AgentTrace
   usingDemoData: boolean
+}
+
+function buildFallbackSummary(
+  matchedCount: number,
+  totalCount: number,
+  savings: number,
+  unmatchedItems: string[],
+  substitutedBrands: SubstitutedBrand[]
+): string {
+  const parts: string[] = []
+  parts.push(`${matchedCount} of ${totalCount} items are on promotion this week.`)
+  if (savings > 0) {
+    parts.push(`Estimated savings: $${savings.toFixed(2)}.`)
+  }
+  if (substitutedBrands.length > 0) {
+    const names = substitutedBrands.map((b) => b.term).join(', ')
+    parts.push(`Preferred brand not available for: ${names}.`)
+  }
+  if (unmatchedItems.length > 0) {
+    parts.push(`No deals found for: ${unmatchedItems.join(', ')}.`)
+  }
+  return parts.join(' ')
 }
 
 function toRawDeal(p: FairPricePromotion): RawDeal {
@@ -179,6 +206,18 @@ export async function runGroceryAgent(
         ),
         unmatched: z.array(z.string()),
         savings_summary: z.string().optional(),
+        summary: z.string().describe(
+          'Plain-English recommendation in 2-4 sentences covering match rate, savings, and whether to stock up'
+        ),
+        substituted_brands: z
+          .array(
+            z.object({
+              term: z.string(),
+              found: z.string(),
+              preferred: z.string(),
+            })
+          )
+          .optional(),
       }),
       execute: async (input) => {
         finalRecommendation = input as RecordRecommendationToolInput
@@ -260,15 +299,21 @@ export async function runGroceryAgent(
     store: 'fairprice' as const,
   }))
 
+  const estimatedSavings = parseFloat(
+    plannedItems.reduce((sum, p) => sum + (p.deal.savingAmount ?? 0), 0).toFixed(2)
+  )
+  const substitutedBrands: SubstitutedBrand[] = rec?.substituted_brands ?? []
+  const summary = rec?.summary ?? buildFallbackSummary(plannedItems.length, shoppingList.length, estimatedSavings, unmatched, substitutedBrands)
+
   const plan: ShoppingPlan = {
     run_id: builder.getRunId(),
     generated_at: new Date().toISOString(),
     items: plannedItems,
     unmatched_items: unmatched,
     estimated_total: parseFloat(plannedItems.reduce((sum, p) => sum + p.deal.salePrice, 0).toFixed(2)),
-    estimated_savings: parseFloat(
-      plannedItems.reduce((sum, p) => sum + (p.deal.savingAmount ?? 0), 0).toFixed(2)
-    ),
+    estimated_savings: estimatedSavings,
+    summary,
+    substituted_brands: substitutedBrands,
   }
 
   const trace = builder.finalise(plan)
