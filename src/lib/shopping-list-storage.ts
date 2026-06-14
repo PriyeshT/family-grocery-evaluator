@@ -17,6 +17,7 @@ export function loadShoppingList(): ShoppingListItem[] {
 export function saveShoppingList(items: ShoppingListItem[]): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  window.dispatchEvent(new CustomEvent('shopping-list-updated'))
 }
 
 export function updateItemBrand(term: string, preferredBrand: string | undefined): void {
