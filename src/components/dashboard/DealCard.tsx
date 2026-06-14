@@ -13,6 +13,7 @@ export function DealCard({ item }: DealCardProps) {
   const hasSaving = deal.savingPct !== null && deal.savingPct > 0
   const isFairPricePromo = deal.store === 'fairprice' && hasSaving
   const showBrandBadge = preferredBrand !== undefined
+  const href = deal.url?.startsWith('http') ? deal.url : `https://www.fairprice.com.sg${deal.url ?? ''}`
 
   return (
     <div className="rounded-lg border border-brand-border bg-brand-surface p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -65,15 +66,27 @@ export function DealCard({ item }: DealCardProps) {
         {deal.promoLabel && (
           <p className="text-xs text-brand-secondary font-medium">{deal.promoLabel}</p>
         )}
-        {isFairPricePromo && (
-          <Link
-            href="/promotions"
-            className="ml-auto flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-brand-tertiary bg-brand-tertiary/10 border border-brand-tertiary/30 rounded-full px-2.5 py-0.5 hover:bg-brand-tertiary/20 transition-colors"
-          >
-            <span>On Sale</span>
-            <span aria-hidden>→</span>
-          </Link>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {isFairPricePromo && (
+            <Link
+              href="/promotions"
+              className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-brand-tertiary bg-brand-tertiary/10 border border-brand-tertiary/30 rounded-full px-2.5 py-0.5 hover:bg-brand-tertiary/20 transition-colors"
+            >
+              <span>On Sale</span>
+              <span aria-hidden>→</span>
+            </Link>
+          )}
+          {deal.url && (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 bg-brand-tertiary hover:bg-brand-tertiary/90 text-white text-xs font-medium rounded-md transition-colors"
+            >
+              View →
+            </a>
+          )}
+        </div>
       </div>
     </div>
   )
