@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import type { PlannedItem } from '@/types'
+import type { PlannedItem, FairPriceSection } from '@/types'
+import { SECTION_LABELS } from '@/types'
 
 interface DealCardProps {
   item: PlannedItem
@@ -8,12 +9,27 @@ interface DealCardProps {
 const STORE_LABEL = 'FairPrice'
 const STORE_COLOR = 'bg-brand-secondary/10 border-brand-secondary/30 text-brand-secondary'
 
+const SECTION_ICONS: Record<FairPriceSection, string> = {
+  'flash-deals': '⚡',
+  'price-slash': '🔖',
+  'fresh-picks': '🥦',
+  'weekly': '📅',
+}
+
+const SECTION_COLORS: Record<FairPriceSection, string> = {
+  'flash-deals': 'bg-brand-tertiary/10 text-brand-tertiary border-brand-tertiary/30',
+  'price-slash': 'bg-rose-50 text-rose-600 border-rose-200',
+  'fresh-picks': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'weekly': 'bg-sky-50 text-sky-700 border-sky-200',
+}
+
 export function DealCard({ item }: DealCardProps) {
   const { deal, shopping_list_term, preferredBrand, brandMatched } = item
   const hasSaving = deal.savingPct !== null && deal.savingPct > 0
   const isFairPricePromo = deal.store === 'fairprice' && hasSaving
   const showBrandBadge = preferredBrand !== undefined
   const href = deal.url?.startsWith('http') ? deal.url : `https://www.fairprice.com.sg${deal.url ?? ''}`
+  const category = deal.category ?? null
 
   return (
     <div className="rounded-lg border border-brand-border bg-brand-surface p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -61,6 +77,15 @@ export function DealCard({ item }: DealCardProps) {
           {STORE_LABEL}
         </span>
       </div>
+
+      {category && (
+        <div className="mt-2">
+          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${SECTION_COLORS[category]}`}>
+            <span aria-hidden>{SECTION_ICONS[category]}</span>
+            {SECTION_LABELS[category]}
+          </span>
+        </div>
+      )}
 
       <div className="mt-2 flex items-center justify-between">
         {deal.promoLabel && (

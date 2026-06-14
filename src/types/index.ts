@@ -12,6 +12,7 @@ export interface RawDeal {
   savingPct: number | null
   url: string | null
   promoLabel: string | null
+  category?: FairPriceSection | null
 }
 
 export interface SubstitutedBrand {

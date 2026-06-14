@@ -82,6 +82,7 @@ function toRawDeal(p: FairPricePromotion): RawDeal {
     savingPct: p.savingPct,
     url: p.url,
     promoLabel: p.promoLabel,
+    category: p.category,
   }
 }
 
