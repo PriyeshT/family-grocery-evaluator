@@ -115,8 +115,14 @@ export default function DashboardPage() {
         {result && !loading && (
           <>
             {result.plan.summary && (
-              <div className="rounded-lg border border-brand-secondary/30 bg-brand-secondary/10 px-4 py-3 text-sm text-brand-primary">
-                {result.plan.summary}
+              <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">✨</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                    AI Recommendation
+                  </span>
+                </div>
+                <p className="text-sm text-violet-700 leading-relaxed">{result.plan.summary}</p>
               </div>
             )}
 
