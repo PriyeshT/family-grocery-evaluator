@@ -14,7 +14,11 @@ export function Navigation() {
 
     const handleStorage = () => setListCount(loadShoppingList().length)
     window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
+    window.addEventListener('shopping-list-updated', handleStorage)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('shopping-list-updated', handleStorage)
+    }
   }, [])
 
   return (
