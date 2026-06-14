@@ -1,4 +1,20 @@
-import type { RawDeal, ShoppingPlan } from '@/types'
+import type { RawDeal, ShoppingPlan, FairPriceSection } from '@/types'
+
+export interface LlmStep {
+  step_number: number
+  model: string
+  input_tokens: number
+  output_tokens: number
+  tool_called: string | null
+  reasoning: string | null
+}
+
+export interface ToolCallRecord {
+  tool: string
+  input: Record<string, unknown>
+  output: unknown
+  duration_ms: number
+}
 
 export interface AgentTrace {
   run_id: string
@@ -6,6 +22,10 @@ export interface AgentTrace {
   trigger_type: 'manual' | 'scheduled' | 'api'
   duration_ms: number
   steps: TraceSteps
+  llm_steps: LlmStep[]
+  tool_calls: ToolCallRecord[]
+  total_input_tokens: number
+  total_output_tokens: number
   final_plan: ShoppingPlan | null
   errors: TraceError[]
   warnings: string[]
@@ -14,13 +34,18 @@ export interface AgentTrace {
 export interface TraceSteps {
   scrape: ScrapeStep | null
   matching: MatchingStep | null
-  comparison: ComparisonStep | null
-  store_split: StoreSplitStep | null
 }
 
 export interface ScrapeStep {
   fairprice: ScrapeSummary
-  coldstorage: ScrapeSummary
+}
+
+export interface SectionScrapeResult {
+  section: FairPriceSection
+  items_found: number
+  duration_ms: number
+  status: 'success' | 'fallback_used' | 'failed'
+  error?: string
 }
 
 export interface ScrapeSummary {
@@ -30,10 +55,12 @@ export interface ScrapeSummary {
   duration_ms: number
   raw_deals: RawDeal[]
   error?: string
+  sections_selected?: FairPriceSection[]
+  section_results?: SectionScrapeResult[]
 }
 
 export interface MatchingStep {
-  shopping_list: string[]
+  shopping_list: import('@/types').ShoppingListItem[]
   matched: MatchedItem[]
   unmatched: string[]
   match_methods_used: Array<'exact' | 'fuzzy' | 'none'>
@@ -44,33 +71,12 @@ export interface MatchedItem {
   matched_deal: RawDeal
   match_method: 'exact' | 'fuzzy' | 'none'
   confidence: number
-}
-
-export interface ComparisonStep {
-  items_compared: ComparedItem[]
-  items_single_store: string[]
-}
-
-export interface ComparedItem {
-  item_name: string
-  fairprice_deal: RawDeal | null
-  coldstorage_deal: RawDeal | null
-  winner: 'fairprice' | 'coldstorage' | 'no_deal'
-  saving_amount: number
-  saving_pct: number
-}
-
-export interface StoreSplitStep {
-  recommendation: 'single_store' | 'split'
-  primary_store: 'fairprice' | 'coldstorage'
-  split_store: 'fairprice' | 'coldstorage' | null
-  estimated_total_savings: number
-  threshold_applied: number
-  reasoning: string
+  preferredBrand?: string
+  brandMatched?: boolean
 }
 
 export interface TraceError {
-  step: 'scrape' | 'matching' | 'comparison' | 'store_split' | 'agent'
+  step: 'scrape' | 'matching' | 'agent'
   message: string
   details?: string
 }

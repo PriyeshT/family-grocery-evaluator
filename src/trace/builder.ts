@@ -3,13 +3,13 @@ import type {
   AgentTrace,
   ScrapeStep,
   MatchingStep,
-  ComparisonStep,
-  StoreSplitStep,
+  LlmStep,
+  ToolCallRecord,
   TraceError,
 } from './types'
 import type { ShoppingPlan } from '@/types'
 
-type StepName = 'scrape' | 'matching' | 'comparison' | 'store_split'
+type StepName = 'scrape' | 'matching'
 
 export class TraceBuilder {
   private run_id: string
@@ -19,9 +19,9 @@ export class TraceBuilder {
   private steps: {
     scrape: ScrapeStep | null
     matching: MatchingStep | null
-    comparison: ComparisonStep | null
-    store_split: StoreSplitStep | null
   }
+  private llmSteps: LlmStep[]
+  private toolCallRecords: ToolCallRecord[]
   private errors: TraceError[]
   private warnings: string[]
   private recorded: Set<StepName>
@@ -32,7 +32,9 @@ export class TraceBuilder {
     this.triggered_at = new Date().toISOString()
     this.trigger_type = trigger_type
     this.startedAt = Date.now()
-    this.steps = { scrape: null, matching: null, comparison: null, store_split: null }
+    this.steps = { scrape: null, matching: null }
+    this.llmSteps = []
+    this.toolCallRecords = []
     this.errors = []
     this.warnings = []
     this.recorded = new Set()
@@ -59,19 +61,38 @@ export class TraceBuilder {
     return this
   }
 
-  recordComparison(step: ComparisonStep): this {
+  recordLlmStep(params: {
+    model: string
+    inputTokens: number
+    outputTokens: number
+    toolCalled: string | null
+    reasoning: string | null
+  }): this {
     this.assertNotFinalised()
-    this.assertNotRecorded('comparison')
-    this.steps.comparison = step
-    this.recorded.add('comparison')
+    this.llmSteps.push({
+      step_number: this.llmSteps.length,
+      model: params.model,
+      input_tokens: params.inputTokens,
+      output_tokens: params.outputTokens,
+      tool_called: params.toolCalled,
+      reasoning: params.reasoning,
+    })
     return this
   }
 
-  recordStoreSplit(step: StoreSplitStep): this {
+  recordToolCall(params: {
+    tool: string
+    input: Record<string, unknown>
+    output: unknown
+    durationMs: number
+  }): this {
     this.assertNotFinalised()
-    this.assertNotRecorded('store_split')
-    this.steps.store_split = step
-    this.recorded.add('store_split')
+    this.toolCallRecords.push({
+      tool: params.tool,
+      input: params.input,
+      output: params.output,
+      duration_ms: params.durationMs,
+    })
     return this
   }
 
@@ -88,12 +109,18 @@ export class TraceBuilder {
   finalise(final_plan: ShoppingPlan | null = null): AgentTrace {
     this.assertNotFinalised()
     this.finalised = true
+    const total_input_tokens = this.llmSteps.reduce((sum, s) => sum + s.input_tokens, 0)
+    const total_output_tokens = this.llmSteps.reduce((sum, s) => sum + s.output_tokens, 0)
     const trace: AgentTrace = {
       run_id: this.run_id,
       triggered_at: this.triggered_at,
       trigger_type: this.trigger_type,
       duration_ms: Date.now() - this.startedAt,
       steps: this.steps,
+      llm_steps: this.llmSteps,
+      tool_calls: this.toolCallRecords,
+      total_input_tokens,
+      total_output_tokens,
       final_plan,
       errors: this.errors,
       warnings: this.warnings,

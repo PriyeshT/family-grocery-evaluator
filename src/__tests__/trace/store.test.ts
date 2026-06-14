@@ -8,7 +8,7 @@ function makeTrace(id: string): AgentTrace {
     triggered_at: new Date().toISOString(),
     trigger_type: 'manual',
     duration_ms: 100,
-    steps: { scrape: null, matching: null, comparison: null, store_split: null },
+    steps: { scrape: null, matching: null },
     final_plan: null,
     errors: [],
     warnings: [],

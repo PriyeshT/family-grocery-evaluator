@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import type { ShoppingPlan } from '@/types'
 import type { AgentTrace } from '@/trace/types'
+import { loadShoppingList } from '@/lib/shopping-list-storage'
 import { DealCard } from '@/components/dashboard/DealCard'
-import { StoreSplitCard } from '@/components/dashboard/StoreSplitCard'
 import { RefreshButton } from '@/components/dashboard/RefreshButton'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -26,10 +27,15 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'deals' | 'trace'>('deals')
 
   const refresh = useCallback(async () => {
+    const list = loadShoppingList()
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/promotions', { method: 'POST' })
+      const res = await fetch('/api/promotions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shoppingList: list }),
+      })
       if (!res.ok) {
         const body = (await res.json()) as { error?: string }
         throw new Error(body.error ?? `HTTP ${res.status}`)
@@ -45,16 +51,23 @@ export default function DashboardPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (window.location.search.includes('replan=1')) {
+      window.history.replaceState({}, '', '/')
+      void refresh()
+    }
+  }, [refresh])
+
   const sortedItems =
     result?.plan.items.slice().sort((a, b) => (b.deal.savingPct ?? 0) - (a.deal.savingPct ?? 0)) ?? []
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <main className="min-h-screen bg-brand-bg">
+      <header className="bg-brand-surface border-b border-brand-border">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">SG Grocery Deals</h1>
-            <p className="text-xs text-gray-500">FairPrice · Cold Storage</p>
+            <h1 className="text-lg font-bold text-brand-primary">SG Grocery Deals</h1>
+            <p className="text-xs text-brand-text-secondary">FairPrice</p>
           </div>
           <RefreshButton onClick={refresh} loading={loading} />
         </div>
@@ -68,10 +81,30 @@ export default function DashboardPage() {
         )}
 
         {!result && !loading && !error && (
-          <div className="text-center py-20">
-            <p className="text-gray-500 mb-4">
-              Click <strong>Refresh deals</strong> to run the agent.
-            </p>
+          <div className="max-w-md mx-auto py-12">
+            <h2 className="text-base font-semibold text-brand-text-primary mb-6 text-center">
+              Get started in 3 steps
+            </h2>
+            <ol className="space-y-5">
+              {[
+                {
+                  label: <><Link href="/shopping-list" className="text-brand-primary hover:underline font-semibold">Shopping List</Link> — Add your grocery items and preferred brands</>,
+                },
+                {
+                  label: <><span className="font-semibold text-brand-text-primary">Refresh Deals</span> — The AI agent finds the best current promotions for your list</>,
+                },
+                {
+                  label: <><span className="font-semibold text-brand-text-primary">Browse Promotions</span> — See what&apos;s on sale this week, add items you&apos;ve missed</>,
+                },
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-4">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-primary text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-brand-text-secondary leading-relaxed">{step.label}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
@@ -81,9 +114,19 @@ export default function DashboardPage() {
 
         {result && !loading && (
           <>
-            <StoreSplitCard recommendation={result.plan.store_recommendation} />
+            {result.plan.summary && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">✨</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                    AI Recommendation
+                  </span>
+                </div>
+                <p className="text-sm text-violet-700 leading-relaxed">{result.plan.summary}</p>
+              </div>
+            )}
 
-            <div className="flex gap-1 border-b border-gray-200">
+            <div className="flex gap-1 border-b border-brand-border">
               <TabButton active={activeTab === 'deals'} onClick={() => setActiveTab('deals')}>
                 Deals ({sortedItems.length})
               </TabButton>
@@ -106,13 +149,13 @@ export default function DashboardPage() {
                   </div>
                 )}
                 {result.plan.unmatched_items.length > 0 && (
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">No deals found for:</p>
+                  <div className="rounded-lg border border-brand-border bg-brand-surface p-4">
+                    <p className="text-sm font-medium text-brand-text-secondary mb-2">No deals found for:</p>
                     <div className="flex flex-wrap gap-2">
                       {result.plan.unmatched_items.map((item) => (
                         <span
                           key={item}
-                          className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
+                          className="text-xs bg-brand-bg text-brand-text-secondary px-2 py-0.5 rounded"
                         >
                           {item}
                         </span>
@@ -120,13 +163,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 )}
-                <div className="text-right text-sm text-gray-500">
+                <div className="text-right text-sm text-brand-text-secondary">
                   Est. total:{' '}
-                  <span className="font-mono font-medium text-gray-800">
+                  <span className="font-mono font-medium text-brand-text-primary">
                     ${result.plan.estimated_total.toFixed(2)}
                   </span>{' '}
                   · Est. savings:{' '}
-                  <span className="font-mono font-medium text-emerald-700">
+                  <span className="font-mono font-medium text-brand-secondary">
                     ${result.plan.estimated_savings.toFixed(2)}
                   </span>
                 </div>
@@ -155,8 +198,8 @@ function TabButton({
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
         active
-          ? 'border-indigo-600 text-indigo-700'
-          : 'border-transparent text-gray-500 hover:text-gray-700'
+          ? 'border-brand-primary text-brand-primary'
+          : 'border-transparent text-brand-text-secondary hover:text-brand-primary'
       }`}
     >
       {children}

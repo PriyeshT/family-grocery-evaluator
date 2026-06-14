@@ -37,8 +37,16 @@ export function TraceMatchingStep({ step }: TraceMatchingStepProps) {
             </thead>
             <tbody>
               {step.matched.map((m) => (
-                <tr key={m.shopping_list_term} className="border-b border-gray-100">
-                  <td className="py-1.5 pr-3 font-medium">{m.shopping_list_term}</td>
+                <tr key={`${m.shopping_list_term}-${m.matched_deal.store}`} className="border-b border-gray-100">
+                  <td className="py-1.5 pr-3 font-medium">
+                    <span>{m.shopping_list_term}</span>
+                    {m.preferredBrand && m.brandMatched && (
+                      <span className="ml-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-full px-1.5">{m.preferredBrand} ✓</span>
+                    )}
+                    {m.preferredBrand && !m.brandMatched && (
+                      <span className="ml-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5">{m.preferredBrand} ✗</span>
+                    )}
+                  </td>
                   <td className="py-1.5 pr-3 text-gray-700">{m.matched_deal.name}</td>
                   <td className="py-1.5 pr-3">
                     <span className={`text-xs px-1.5 py-0.5 rounded ${m.match_method === 'exact' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>

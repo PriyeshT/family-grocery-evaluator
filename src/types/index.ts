@@ -1,37 +1,43 @@
+export interface ShoppingListItem {
+  term: string
+  preferredBrand?: string
+}
+
 export interface RawDeal {
   name: string
-  store: 'fairprice' | 'coldstorage'
+  store: 'fairprice'
   salePrice: number
   originalPrice: number | null
   savingAmount: number | null
   savingPct: number | null
   url: string | null
   promoLabel: string | null
+  category?: FairPriceSection | null
+}
+
+export interface SubstitutedBrand {
+  term: string
+  found: string
+  preferred: string
 }
 
 export interface ShoppingPlan {
   run_id: string
   generated_at: string
   items: PlannedItem[]
-  store_recommendation: StoreSplitRecommendation
   unmatched_items: string[]
   estimated_total: number
   estimated_savings: number
+  summary: string
+  substituted_brands: SubstitutedBrand[]
 }
 
 export interface PlannedItem {
   shopping_list_term: string
   deal: RawDeal
-  store: 'fairprice' | 'coldstorage'
-}
-
-export interface StoreSplitRecommendation {
-  recommendation: 'single_store' | 'split'
-  primary_store: 'fairprice' | 'coldstorage'
-  split_store: 'fairprice' | 'coldstorage' | null
-  estimated_total_savings: number
-  threshold_applied: number
-  reasoning: string
+  store: 'fairprice'
+  preferredBrand?: string
+  brandMatched?: boolean
 }
 
 export type FairPriceSection = 'flash-deals' | 'price-slash' | 'fresh-picks' | 'weekly'
@@ -63,18 +69,47 @@ export interface PromotionsResult {
   scrapedAt: string
   usedFallback: boolean
   error?: string
+  dealHistoryByName?: Record<string, DealHistoryStats>
 }
 
 export interface MatchedPromotion {
   shoppingListTerm: string
   promotion: FairPricePromotion
-  matchMethod: 'exact' | 'fuzzy'
+  matchMethod: 'exact' | 'fuzzy' | 'llm'
   confidence: number
+  brandFound?: boolean
+  alternatives?: FairPricePromotion[]
 }
 
 export interface PromotionsMatchResult {
   matched: MatchedPromotion[]
   unmatched: string[]
+  scrapedAt: string
+  usedFallback: boolean
+}
+
+export interface DealSnapshot {
+  itemName: string
+  store: 'fairprice'
+  salePrice: number
+  weekKey: string
+  scrapedAt: string
+}
+
+export interface DealHistoryStats {
+  weeksOnPromotion: number
+  isLowestPrice: boolean
+  lowestPriceWindowWeeks: number
+}
+
+export interface OpportunityItem {
+  promotion: FairPricePromotion
+  rationale: string
+  rank: number
+}
+
+export interface OpportunitiesResult {
+  opportunities: OpportunityItem[]
   scrapedAt: string
   usedFallback: boolean
 }

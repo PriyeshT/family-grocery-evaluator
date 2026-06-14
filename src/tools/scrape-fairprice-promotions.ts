@@ -1,24 +1,83 @@
 import * as cheerio from 'cheerio'
-import type { AnyNode, Element as DomElement } from 'domhandler'
+import type { AnyNode } from 'domhandler'
 import type { FairPricePromotion, FairPriceSection, PromotionsResult } from '@/types'
 import { MOCK_FAIRPRICE_PROMOTIONS } from '@/lib/mock-data'
 import { config } from '@/lib/config'
 
-const SECTION_PATTERNS: [RegExp, FairPriceSection][] = [
-  [/flash\s+deals?/i, 'flash-deals'],
-  [/price\s+slash/i, 'price-slash'],
-  [/fresh\s+picks?/i, 'fresh-picks'],
-  [/weekly\s+prom/i, 'weekly'],
-]
+const SECTION_URLS: Record<FairPriceSection, string> = {
+  'flash-deals': 'https://www.fairprice.com.sg/promotions?tag=campaign-flash-sale',
+  'price-slash': 'https://www.fairprice.com.sg/promotions?tag=curated-lowest-price-in-30-days',
+  'fresh-picks': 'https://www.fairprice.com.sg/promotions?tag=fresh-picks-1',
+  'weekly': 'https://www.fairprice.com.sg/promotions?tag=promotions-boost',
+}
 
-function detectSection(text: string): FairPriceSection | null {
-  for (const [pattern, section] of SECTION_PATTERNS) {
-    if (pattern.test(text)) return section
-  }
-  return null
+const FETCH_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml',
 }
 
 let cache: { result: PromotionsResult; expiresAt: number } | null = null
+
+const sectionCache = new Map<
+  FairPriceSection,
+  { result: { promotions: FairPricePromotion[]; usedFallback: boolean; scrapedAt: string; error?: string }; expiresAt: number }
+>()
+
+export async function scrapeFairPriceSectionOnly(section: FairPriceSection): Promise<{
+  promotions: FairPricePromotion[]
+  usedFallback: boolean
+  scrapedAt: string
+  error?: string
+}> {
+  const cached = sectionCache.get(section)
+  if (cached && Date.now() < cached.expiresAt) return cached.result
+
+  const scrapedAt = new Date().toISOString()
+  const url = SECTION_URLS[section]
+
+  const store = (result: { promotions: FairPricePromotion[]; usedFallback: boolean; scrapedAt: string; error?: string }) => {
+    sectionCache.set(section, { result, expiresAt: Date.now() + config.promotionsCacheTtlMs })
+    return result
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs)
+    const res = await fetch(url, { signal: controller.signal, headers: FETCH_HEADERS })
+    clearTimeout(timeout)
+
+    if (!res.ok) {
+      return store({
+        promotions: MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section),
+        usedFallback: true,
+        scrapedAt,
+        error: `HTTP ${res.status}`,
+      })
+    }
+
+    const html = await res.text()
+    const promotions = parseFairPricePromotionsHtml(html, section)
+
+    if (promotions.length === 0) {
+      return store({
+        promotions: MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section),
+        usedFallback: true,
+        scrapedAt,
+        error: 'No products parsed — page may be JS-rendered',
+      })
+    }
+
+    return store({ promotions, usedFallback: false, scrapedAt })
+  } catch (err) {
+    return store({
+      promotions: MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section),
+      usedFallback: true,
+      scrapedAt,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
 
 export async function scrapeFairPricePromotions(): Promise<PromotionsResult> {
   if (cache && Date.now() < cache.expiresAt) {
@@ -26,66 +85,64 @@ export async function scrapeFairPricePromotions(): Promise<PromotionsResult> {
   }
 
   const scrapedAt = new Date().toISOString()
+  const sectionEntries = Object.entries(SECTION_URLS) as [FairPriceSection, string][]
 
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs)
+  const sectionResults = await Promise.all(
+    sectionEntries.map(async ([section, url]) => {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs)
+        const res = await fetch(url, { signal: controller.signal, headers: FETCH_HEADERS })
+        clearTimeout(timeout)
+        if (!res.ok) return { section, promotions: null, error: `HTTP ${res.status}` }
+        const html = await res.text()
+        const promotions = parseFairPricePromotionsHtml(html, section)
+        return {
+          section,
+          promotions: promotions.length > 0 ? promotions : null,
+          error: promotions.length === 0 ? 'No products parsed — page may be JS-rendered' : undefined,
+        }
+      } catch (err) {
+        return { section, promotions: null, error: err instanceof Error ? err.message : String(err) }
+      }
+    }),
+  )
 
-    const res = await fetch(config.fairpricePromotionsUrl, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    })
-    clearTimeout(timeout)
+  const allPromotions: FairPricePromotion[] = []
+  const errors: string[] = []
+  let anyFailed = false
 
-    if (!res.ok) {
-      return fallback(scrapedAt, `HTTP ${res.status}`)
+  for (const { section, promotions, error } of sectionResults) {
+    if (promotions) {
+      allPromotions.push(...promotions)
+    } else {
+      anyFailed = true
+      if (error) errors.push(`${section}: ${error}`)
+      allPromotions.push(...MOCK_FAIRPRICE_PROMOTIONS.filter((p) => p.category === section))
     }
-
-    const html = await res.text()
-    const promotions = parseFairPricePromotionsHtml(html)
-
-    if (promotions.length === 0) {
-      return fallback(scrapedAt, 'No promotions parsed from HTML — page may be JS-rendered')
-    }
-
-    const result: PromotionsResult = { promotions, scrapedAt, usedFallback: false }
-    cache = { result, expiresAt: Date.now() + config.promotionsCacheTtlMs }
-    return result
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return fallback(scrapedAt, message)
   }
+
+  const result: PromotionsResult = {
+    promotions: allPromotions,
+    scrapedAt,
+    usedFallback: anyFailed,
+    ...(errors.length > 0 ? { error: errors.join('; ') } : {}),
+  }
+
+  cache = { result, expiresAt: Date.now() + config.promotionsCacheTtlMs }
+  return result
 }
 
-function fallback(scrapedAt: string, error: string): PromotionsResult {
-  return { promotions: MOCK_FAIRPRICE_PROMOTIONS, scrapedAt, usedFallback: true, error }
-}
-
-export function parseFairPricePromotionsHtml(html: string): FairPricePromotion[] {
+export function parseFairPricePromotionsHtml(
+  html: string,
+  section: FairPriceSection | null = null,
+): FairPricePromotion[] {
   const $ = cheerio.load(html)
   const promotions: FairPricePromotion[] = []
-  const seen = new WeakSet<object>()
-  let currentSection: FairPriceSection | null = null
 
-  $('*').each((_, el) => {
-    if (el.type !== 'tag') return
-    const tag = (el as DomElement).tagName.toLowerCase()
-
-    if (['h1', 'h2', 'h3', 'h4'].includes(tag)) {
-      const detected = detectSection($(el).text().trim())
-      if (detected) currentSection = detected
-      return
-    }
-
-    if ($(el).attr('data-testid') === 'product' && !seen.has(el)) {
-      seen.add(el)
-      const promotion = parseProduct($, el, currentSection)
-      if (promotion) promotions.push(promotion)
-    }
+  $('[data-testid="product"]').each((_, el) => {
+    const promotion = parseProduct($, el, section)
+    if (promotion) promotions.push(promotion)
   })
 
   return promotions

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F7F4EE;
+  --foreground: #0D3B66;
 }
 
 @theme inline {
@@ -12,11 +12,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Brand palette in a plain @theme block so Tailwind emits :root CSS variables,
+   which allows opacity-modifier variants (bg-brand-primary/90, etc.) to work
+   via color-mix(). @theme inline suppresses variable generation, breaking them. */
+@theme {
+  --color-brand-primary: #0D3B66;
+  --color-brand-secondary: #426B69;
+  --color-brand-accent: #F4D35E;
+  --color-brand-tertiary: #AA5042;
+  --color-brand-bg: #F7F4EE;
+  --color-brand-surface: #FFFFFF;
+  --color-brand-text-primary: #0D3B66;
+  --color-brand-text-secondary: #5A7178;
+  --color-brand-border: #E4DDD1;
 }
 
 body {
