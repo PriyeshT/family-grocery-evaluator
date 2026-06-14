@@ -1,12 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ShoppingListItem } from '@/types'
 import { loadShoppingList } from '@/lib/shopping-list-storage'
+import { DEFAULT_SHOPPING_LIST } from '@/lib/shopping-list'
 import { ShoppingListEditor } from '@/components/dashboard/ShoppingListEditor'
 
 export default function ShoppingListPage() {
-  const [items, setItems] = useState<ShoppingListItem[]>(() => loadShoppingList())
+  const [items, setItems] = useState<ShoppingListItem[]>(DEFAULT_SHOPPING_LIST)
+
+  useEffect(() => {
+    setItems(loadShoppingList())
+  }, [])
 
   return (
     <main className="min-h-screen bg-brand-bg">
